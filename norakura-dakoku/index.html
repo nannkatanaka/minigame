@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>のらりくらり打刻</title>
+<style>
+:root{
+  --bg:#0f1420; --panel:#182033; --panel2:#202a42; --ink:#e8ecf5; --mute:#8d97ad;
+  --work:#4f9cf9; --talk:#3fc98a; --card:#f2b33d; --angry:#f0607a; --accent:#ff4d4d;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;}
+body{min-height:100vh;display:flex;justify-content:center;padding:12px 16px 24px;}
+.wrap{width:100%;max-width:820px;}
+h1{font-size:20px;margin:4px 0 2px;letter-spacing:.05em}
+.sub{color:var(--mute);font-size:12px;margin-bottom:10px}
+
+/* top HUD */
+.hud{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:stretch;margin-bottom:10px}
+.clockbox{background:#05080d;border:3px solid #39445e;border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:12px;position:relative;overflow:hidden}
+.clockbox .lbl{font-size:11px;color:var(--mute);line-height:1.2}
+.clock{font-family:"Consolas","Courier New",monospace;font-size:clamp(30px,8vw,52px);color:#7dffb0;text-shadow:0 0 12px #2bff8a88;letter-spacing:.04em;font-weight:bold;white-space:nowrap}
+.clock small{font-size:.5em;color:#4fcf86}
+.clock.over{color:#ff7a7a;text-shadow:0 0 12px #ff3b3b99}
+.clock.hidden{color:#444c5e;text-shadow:none}
+.blocker{position:absolute;inset:0;background:repeating-linear-gradient(45deg,#2a1c1c,#2a1c1c 10px,#3a2222 10px,#3a2222 20px);display:none;align-items:center;justify-content:center;font-weight:bold;color:#ffb3b3;font-size:14px;text-align:center;padding:4px}
+.blocker.on{display:flex}
+.meters{background:var(--panel);border-radius:10px;padding:8px 12px;min-width:180px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+.meter-l{font-size:11px;color:var(--mute);display:flex;justify-content:space-between}
+.bar{height:12px;background:#0b0f18;border-radius:6px;overflow:hidden}
+.bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#f2b33d,#ff4d4d);transition:width .12s}
+.combo{font-size:12px;color:#ffd36b;min-height:16px}
+
+/* scene */
+.scene{position:relative;width:100%;aspect-ratio:2/1;border-radius:12px;overflow:hidden;background:#1b2234;box-shadow:inset 0 0 0 2px #2a3550}
+.scene svg{position:absolute;inset:0;width:100%;height:100%}
+.bubble{position:absolute;top:4%;max-width:min(300px,62%);background:#fff;color:#1a1a1a;border-radius:12px;padding:8px 12px 10px;font-weight:bold;font-size:clamp(12px,2.4vw,16px);box-shadow:0 4px 0 rgba(0,0,0,.25);border:4px solid #999;transform:translateX(-50%) scale(.9);opacity:0;transition:opacity .12s, transform .12s;pointer-events:none;z-index:3}
+.bubble.show{opacity:1;transform:translateX(-50%) scale(1)}
+.bubble .tag{display:inline-block;font-size:.72em;color:#fff;padding:1px 7px;border-radius:9px;margin-bottom:3px}
+.bubble .tbar{height:5px;background:#ddd;border-radius:3px;margin-top:6px;overflow:hidden}
+.bubble .tbar i{display:block;height:100%;background:#333;width:100%}
+.pbubble{position:absolute;bottom:52%;left:20%;max-width:46%;background:#dff1ff;color:#123;border-radius:12px;padding:6px 10px;font-size:clamp(11px,2.2vw,14px);font-weight:bold;transform:translateX(-30%);opacity:0;transition:opacity .15s;z-index:2;pointer-events:none}
+.pbubble.show{opacity:1}
+.pbubble.bad{background:#ffe0e0;color:#611}
+.flash{position:absolute;inset:0;pointer-events:none;z-index:4;opacity:0;transition:opacity .25s}
+.float{position:absolute;font-weight:bold;font-size:20px;pointer-events:none;z-index:5;animation:up .9s ease-out forwards;text-shadow:0 2px 0 #000}
+@keyframes up{from{transform:translate(-50%,0);opacity:1}to{transform:translate(-50%,-50px);opacity:0}}
+.shake{animation:shake .3s}
+@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+
+/* controls */
+.controls{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.act{border:none;border-radius:10px;padding:10px 6px;color:#fff;font-weight:bold;font-size:clamp(11px,2.6vw,14px);cursor:pointer;line-height:1.3;box-shadow:0 4px 0 rgba(0,0,0,.35);transition:transform .05s;font-family:inherit;min-height:58px}
+.act:active,.act.press{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.35)}
+.act kbd{display:inline-block;background:rgba(0,0,0,.28);border-radius:4px;padding:0 6px;font-size:11px;margin-bottom:2px;font-family:inherit}
+.act[data-t=work]{background:var(--work)} .act[data-t=talk]{background:var(--talk)}
+.act[data-t=card]{background:var(--card);color:#2b1d00} .act[data-t=angry]{background:var(--angry)}
+.act.hint{outline:3px solid #fff;outline-offset:2px}
+.punch{margin-top:10px;width:100%;border:none;border-radius:12px;padding:14px;font-size:clamp(16px,4vw,22px);font-weight:bold;background:#e8ecf5;color:#141a28;cursor:pointer;box-shadow:0 5px 0 #8d97ad;font-family:inherit}
+.punch:active,.punch.press{transform:translateY(4px);box-shadow:0 1px 0 #8d97ad}
+.punch kbd{background:#141a28;color:#fff;border-radius:4px;padding:1px 8px;font-size:13px;margin-right:6px;font-family:inherit}
+
+/* overlay */
+.overlay{position:fixed;inset:0;background:rgba(6,9,15,.86);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
+.overlay.hide{display:none}
+.card{background:var(--panel);border-radius:16px;padding:22px 22px 18px;max-width:540px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.card h2{margin:0 0 8px;font-size:22px}
+.card p{line-height:1.7;margin:6px 0;font-size:14px}
+.card .story{background:var(--panel2);border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.8}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0;font-size:12px}
+.legend div{background:var(--panel2);border-radius:8px;padding:6px 8px;border-left:5px solid}
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.mode{border:2px solid #39445e;background:var(--panel2);color:var(--ink);border-radius:10px;padding:10px 4px;cursor:pointer;font-family:inherit;font-weight:bold;font-size:14px}
+.mode span{display:block;font-size:10px;color:var(--mute);font-weight:normal;margin-top:3px}
+.mode:hover{border-color:#7dffb0}
+.res-time{font-family:Consolas,monospace;font-size:34px;font-weight:bold;margin:6px 0}
+.res-pay{font-size:28px;font-weight:bold}
+.rank{display:inline-block;padding:4px 12px;border-radius:8px;font-weight:bold;margin:8px 0;font-size:16px}
+.stats{color:var(--mute);font-size:13px}
+.btnrow{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.btnrow button{flex:1;min-width:120px;border:none;border-radius:10px;padding:12px;font-weight:bold;font-family:inherit;cursor:pointer;font-size:14px}
+.primary{background:#7dffb0;color:#0f1420}
+.secondary{background:var(--panel2);color:var(--ink)}
+@media (max-width:560px){
+  .hud{grid-template-columns:1fr}
+  .meters{min-width:0}
+  .legend{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>のらりくらり打刻</h1>
+  <div class="sub">株式会社ブラック・ホールディングス ／ 残業代は1時間単位（59分は切り捨て）</div>
+
+  <div class="hud">
+    <div class="clockbox">
+      <div class="lbl">タイム<br>レコーダー</div>
+      <div class="clock" id="clock">18:59:00<small>.00</small></div>
+      <div class="blocker" id="blocker">部長が時計の前に立ちはだかった！<br>心の中で数えろ…</div>
+    </div>
+    <div class="meters">
+      <div class="meter-l"><span>部長のイライラ度</span><span id="pval">0%</span></div>
+      <div class="bar"><i id="pbar"></i></div>
+      <div class="combo" id="combo"></div>
+    </div>
+  </div>
+
+  <div class="scene" id="scene">
+    <svg viewBox="0 0 800 400" aria-hidden="true">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0a1030"/><stop offset="1" stop-color="#28205a"/>
+        </linearGradient>
+      </defs>
+      <!-- wall -->
+      <rect width="800" height="400" fill="#2a3346"/>
+      <rect y="300" width="800" height="100" fill="#3a3f4c"/>
+      <rect y="296" width="800" height="6" fill="#222836"/>
+      <!-- window -->
+      <rect x="470" y="30" width="300" height="170" fill="url(#sky)" stroke="#555f75" stroke-width="6"/>
+      <g id="city"></g>
+      <line x1="620" y1="30" x2="620" y2="200" stroke="#555f75" stroke-width="5"/>
+      <circle cx="730" cy="60" r="14" fill="#f4f1d0" opacity=".9"/>
+      <!-- light -->
+      <rect x="120" y="0" width="200" height="10" fill="#dfe8ff" opacity=".8"/>
+      <rect x="480" y="0" width="200" height="10" fill="#3a4152"/>
+      <!-- clock on wall -->
+      <g transform="translate(330,70)">
+        <circle r="34" fill="#f2f2f2" stroke="#222" stroke-width="5"/>
+        <line id="hMin" x1="0" y1="0" x2="0" y2="-24" stroke="#222" stroke-width="4" stroke-linecap="round"/>
+        <line x1="0" y1="0" x2="0" y2="-16" stroke="#222" stroke-width="5" stroke-linecap="round" transform="rotate(205)"/>
+        <line id="hSec" x1="0" y1="6" x2="0" y2="-28" stroke="#e33" stroke-width="2"/>
+        <circle r="3" fill="#222"/>
+      </g>
+      <!-- poster -->
+      <rect x="40" y="40" width="90" height="110" fill="#e9e2c9"/>
+      <text x="85" y="72" font-size="16" text-anchor="middle" fill="#a00" font-weight="bold">社訓</text>
+      <text x="85" y="96" font-size="11" text-anchor="middle" fill="#333">定時は</text>
+      <text x="85" y="112" font-size="11" text-anchor="middle" fill="#333">目安である</text>
+      <text x="85" y="134" font-size="9" text-anchor="middle" fill="#666">— 社長</text>
+      <!-- timecard machine -->
+      <g transform="translate(410,170)">
+        <rect width="54" height="80" rx="5" fill="#c9ccd4" stroke="#555" stroke-width="3"/>
+        <rect x="8" y="8" width="38" height="16" fill="#0c1a10"/>
+        <rect x="18" y="34" width="18" height="34" fill="#333"/>
+        <rect x="20" y="20" width="14" height="30" fill="#f6f0dc" id="cardSlot" opacity="0"/>
+      </g>
+      <!-- background desks -->
+      <rect x="560" y="245" width="220" height="16" fill="#5b4a3a"/>
+      <rect x="575" y="200" width="60" height="45" fill="#222" stroke="#444" stroke-width="3"/>
+      <rect x="690" y="200" width="60" height="45" fill="#222" stroke="#444" stroke-width="3"/>
+      <!-- player desk -->
+      <g id="player">
+        <rect x="40" y="250" width="300" height="20" fill="#6b5640"/>
+        <rect x="55" y="270" width="12" height="80" fill="#4a3c2c"/>
+        <rect x="315" y="270" width="12" height="80" fill="#4a3c2c"/>
+        <rect x="190" y="175" width="110" height="72" rx="4" fill="#111" stroke="#666" stroke-width="4"/>
+        <rect x="196" y="181" width="98" height="60" fill="#2c6ed8" id="screen"/>
+        <g id="screenLines" fill="#cfe2ff">
+          <rect x="202" y="188" width="60" height="4"/><rect x="202" y="198" width="80" height="4"/>
+          <rect x="202" y="208" width="45" height="4"/><rect x="202" y="218" width="70" height="4"/>
+        </g>
+        <rect x="238" y="247" width="14" height="6" fill="#666"/>
+        <!-- player (back view) -->
+        <g id="pl" transform="translate(140,250)">
+          <path d="M-48,0 Q-48,-62 0,-66 Q48,-62 48,0 Z" fill="#334a7a"/>
+          <rect x="-8" y="-72" width="16" height="10" fill="#e9c4a0"/>
+          <circle cx="0" cy="-96" r="28" fill="#1c1c1c"/>
+          <ellipse cx="-27" cy="-94" rx="5" ry="8" fill="#e9c4a0"/>
+          <ellipse cx="27" cy="-94" rx="5" ry="8" fill="#e9c4a0"/>
+          <g id="phone" opacity="0"><rect x="22" y="-110" width="10" height="22" rx="2" fill="#222"/></g>
+          <text id="sweat" x="34" y="-120" font-size="22" opacity="0">💦</text>
+        </g>
+        <rect x="90" y="255" width="100" height="60" fill="#222" rx="6"/>
+      </g>
+      <!-- boss -->
+      <g id="boss" transform="translate(680,300)">
+        <ellipse cx="0" cy="2" rx="46" ry="8" fill="#000" opacity=".25"/>
+        <rect x="-26" y="-78" width="22" height="78" fill="#2a2a33"/>
+        <rect x="4" y="-78" width="22" height="78" fill="#2a2a33"/>
+        <rect x="-30" y="-4" width="26" height="8" rx="3" fill="#111"/>
+        <rect x="4" y="-4" width="26" height="8" rx="3" fill="#111"/>
+        <path d="M-44,-80 Q-48,-170 0,-172 Q48,-170 44,-80 Z" fill="#3b3f52"/>
+        <path d="M-12,-170 L0,-150 L12,-170 Z" fill="#fff"/>
+        <path id="tie" d="M-5,-160 L5,-160 L9,-110 L0,-98 L-9,-110 Z" fill="#b8202e"/>
+        <path d="M-44,-160 Q-66,-120 -52,-92" stroke="#3b3f52" stroke-width="16" fill="none" stroke-linecap="round"/>
+        <g id="armR"><path d="M44,-160 Q66,-120 52,-92" stroke="#3b3f52" stroke-width="16" fill="none" stroke-linecap="round"/>
+        <circle cx="52" cy="-90" r="9" fill="#e9c4a0"/></g>
+        <circle cx="-52" cy="-90" r="9" fill="#e9c4a0"/>
+        <g id="head" transform="translate(0,-205)">
+          <ellipse id="face" cx="0" cy="0" rx="32" ry="36" fill="#e9c4a0"/>
+          <path d="M-32,-8 Q-34,-38 -12,-36 L-14,-26 Q-26,-24 -28,-6 Z" fill="#444"/>
+          <path d="M32,-8 Q34,-38 12,-36 L14,-26 Q26,-24 28,-6 Z" fill="#444"/>
+          <path d="M-12,-36 Q0,-40 12,-36" stroke="#e9c4a0" stroke-width="2" fill="none"/>
+          <line id="browL" x1="-20" y1="-12" x2="-6" y2="-12" stroke="#222" stroke-width="4" stroke-linecap="round"/>
+          <line id="browR" x1="6" y1="-12" x2="20" y2="-12" stroke="#222" stroke-width="4" stroke-linecap="round"/>
+          <rect x="-22" y="-6" width="16" height="11" rx="3" fill="none" stroke="#222" stroke-width="2.5"/>
+          <rect x="6" y="-6" width="16" height="11" rx="3" fill="none" stroke="#222" stroke-width="2.5"/>
+          <line x1="-6" y1="-1" x2="6" y2="-1" stroke="#222" stroke-width="2.5"/>
+          <circle cx="-14" cy="0" r="2.5" fill="#222"/><circle cx="14" cy="0" r="2.5" fill="#222"/>
+          <path id="mouth" d="M-10,18 Q0,22 10,18" stroke="#6a2a2a" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+          <g id="steam" opacity="0" fill="#fff">
+            <path d="M-38,-40 q-6,-10 0,-20 q6,-10 0,-20" stroke="#fff" stroke-width="4" fill="none"/>
+            <path d="M38,-40 q-6,-10 0,-20 q6,-10 0,-20" stroke="#fff" stroke-width="4" fill="none"/>
+          </g>
+          <g id="vein" opacity="0"><path d="M14,-30 l6,4 m-3,-6 l0,8 m-6,-2 l6,-4" stroke="#d01" stroke-width="3"/></g>
+        </g>
+      </g>
+    </svg>
+    <div class="bubble" id="bubble"><span class="tag" id="btag"></span><div id="btext"></div><div class="tbar"><i id="btimer"></i></div></div>
+    <div class="pbubble" id="pbubble"></div>
+    <div class="flash" id="flash"></div>
+  </div>
+
+  <div class="controls">
+    <button class="act" data-t="work"><kbd>A</kbd><br>仕事アピール</button>
+    <button class="act" data-t="talk"><kbd>S</kbd><br>電話のふり</button>
+    <button class="act" data-t="card"><kbd>D</kbd><br>トイレへ逃亡</button>
+    <button class="act" data-t="angry"><kbd>F</kbd><br>ヨイショ</button>
+  </div>
+  <button class="punch" id="punchBtn"><kbd>SPACE</kbd>タイムカードを切る</button>
+</div>
+
+<!-- start overlay -->
+<div class="overlay" id="startOv">
+  <div class="card">
+    <h2>のらりくらり打刻</h2>
+    <div class="story">
+      定時18:00。現在<b>18:59:00</b>。<br>
+      この会社の残業代は<b>1時間単位</b>。あと1分粘れば残業1時間ぶん（<b>1,500円</b>）がつく。<br>
+      だが部長がにじり寄ってくる。「そろそろタイムカード切ったら？」<br>
+      のらりくらりとかわし、<b>19:00:00ジャスト</b>に打刻せよ。
+    </div>
+    <p style="font-size:13px;margin-top:10px">部長のセリフの<b>色</b>に合わせて言い訳しよう。間違えるか、黙っているとイライラ度が上がる。100%で部長に打刻される。</p>
+    <div class="legend">
+      <div style="border-color:var(--work)"><b>A 仕事アピール</b><br>「まだ何やってるの？」系</div>
+      <div style="border-color:var(--talk)"><b>S 電話のふり</b><br>「ちょっといい？」系</div>
+      <div style="border-color:var(--card)"><b>D トイレへ逃亡</b><br>「カード押しとくね」系</div>
+      <div style="border-color:var(--angry)"><b>F ヨイショ</b><br>説教・嫌味系</div>
+    </div>
+    <p style="font-size:13px"><b>SPACE</b>で打刻。早すぎれば59分ぶんは切り捨て。遅れると部長がブチ切れる。</p>
+    <div class="modes">
+      <button class="mode" data-m="0">新人<span>部長ゆっくり</span></button>
+      <button class="mode" data-m="1">中堅<span>標準</span></button>
+      <button class="mode" data-m="2">社畜<span>最後は時計が見えない</span></button>
+    </div>
+    <p class="stats" id="bestLine" style="margin-top:10px"></p>
+  </div>
+</div>
+
+<!-- result overlay -->
+<div class="overlay hide" id="resOv">
+  <div class="card" style="text-align:center">
+    <h2 id="resTitle"></h2>
+    <div class="stats">打刻時刻</div>
+    <div class="res-time" id="resTime"></div>
+    <div id="resDetail" class="stats"></div>
+    <div class="res-pay" id="resPay"></div>
+    <div class="rank" id="resRank"></div>
+    <p id="resComment"></p>
+    <p class="stats" id="resStats"></p>
+    <div class="btnrow">
+      <button class="primary" id="retry">もう一度（R）</button>
+      <button class="secondary" id="toMenu">難易度を選ぶ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+
+// ---- city lights ----
+(() => {
+  const g = $('city'); let s = '';
+  const blds = [[475,110,40],[518,80,50],[572,125,44],[625,95,38],[665,70,52],[720,115,46]];
+  for (const [x,y,w] of blds) {
+    s += `<rect x="${x}" y="${y}" width="${w}" height="${200-y}" fill="#141a33"/>`;
+    for (let yy=y+8; yy<192; yy+=14) for (let xx=x+6; xx<x+w-6; xx+=10)
+      if (Math.random()<.45) s += `<rect x="${xx}" y="${yy}" width="5" height="6" fill="#ffd97a" opacity="${(.5+Math.random()*.5).toFixed(2)}"/>`;
+  }
+  g.innerHTML = s;
+})();
+
+// ---- data ----
+const TYPES = {
+  work:{color:'#4f9cf9', tag:'仕事アピール', lines:['まだ何かやってるの？','それ明日でよくない？','手、止まってるよね？','効率悪くない？','そのExcel、何の作業？'],
+        reply:['この資料だけ仕上げさせてください！','あと一行で終わるんで！','今いいとこなんです…！','（猛烈なタイピング音）']},
+  talk:{color:'#3fc98a', tag:'電話のふり', lines:['ちょっといいかな？','ねえねえ、聞いてる？','来週の飲み会の件だけど…','ちょっと話あるんだけど','こっち来てくれる？'],
+        reply:['あ、すみません電話が…！','はい、お世話になっております〜（無音）','取引先からです…！少々お待ちを']},
+  card:{color:'#f2b33d', tag:'トイレへ逃亡', lines:['タイムカード、押しとくね？','カード貸して、俺が押すから','そろそろ打刻しよっか','ほら、カード出して','レコーダー空いてるよ？'],
+        reply:['ちょっとお手洗いに…！（カードごと）','お腹が…すみません！','すぐ戻ります！（戻らない）']},
+  angry:{color:'#f0607a', tag:'ヨイショ', lines:['残業代泥棒って言葉知ってる？','俺の若い頃はなぁ…','会社の利益考えてる？','ダラダラ残るのは無能だよ','最近の若いのは…'],
+        reply:['部長のおかげで成長できてます！','さすが部長、勉強になります！','そのネクタイ素敵ですね！','部長みたいになりたいです！']},
+};
+const KEYS = {a:'work', s:'talk', d:'card', f:'angry'};
+const WRONG = ['は？何言ってんの？','話そらすなよ','いや、そういうことじゃなくて','聞いてないよね？','……ふーん'];
+const MODES = [
+  {name:'新人', window:3.0, gap:[1.2,2.0], hide:0,  creep:1.2},
+  {name:'中堅', window:2.2, gap:[0.8,1.5], hide:0,  creep:1.8},
+  {name:'社畜', window:1.6, gap:[0.5,1.1], hide:7,  creep:2.4},
+];
+const RATE = 60/45;   // ゲーム内秒 / 実秒
+const PAY = 1500;
+
+// ---- audio ----
+let ac = null;
+function beep(freq, dur=0.08, type='square', vol=0.05, slide=0){
+  try{
+    ac = ac || new (window.AudioContext||window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.value = freq;
+    if (slide) o.frequency.linearRampToValueAtTime(freq+slide, ac.currentTime+dur);
+    g.gain.setValueAtTime(vol, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime+dur);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime+dur);
+  }catch(e){}
+}
+const sfx = {
+  tick:()=>beep(1800,.025,'square',.03),
+  tock:()=>beep(1300,.025,'square',.03),
+  ok:()=>{beep(880,.07,'triangle',.08); setTimeout(()=>beep(1320,.09,'triangle',.08),60)},
+  bad:()=>beep(160,.25,'sawtooth',.07,-60),
+  punch:()=>{beep(90,.2,'square',.12,-40); setTimeout(()=>beep(2400,.05,'square',.05),120)},
+  win:()=>[523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.15,'triangle',.08),i*110)),
+  lose:()=>[392,330,262,196].forEach((f,i)=>setTimeout(()=>beep(f,.2,'sawtooth',.05),i*150)),
+};
+
+// ---- state ----
+let S = null, modeIdx = 1, raf = 0, lastTs = 0;
+
+function newState(){
+  return { t:0, pressure:0, attack:null, gapLeft:1.0, combo:0, maxCombo:0, dodged:0, misses:0,
+           lastSec:-1, running:true, history:[], bossX:680, overWarned:false, cooldown:0 };
+}
+
+function start(m){
+  modeIdx = m;
+  $('startOv').classList.add('hide'); $('resOv').classList.add('hide');
+  S = newState();
+  $('blocker').classList.remove('on');
+  hideBubble(); $('pbubble').classList.remove('show');
+  $('cardSlot').setAttribute('opacity','0');
+  lastTs = performance.now();
+  cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
+}
+
+function pickType(){
+  const ks = Object.keys(TYPES);
+  let k;
+  do { k = ks[Math.floor(Math.random()*ks.length)]; }
+  while (S.history.length>=2 && S.history.at(-1)===k && S.history.at(-2)===k);
+  S.history.push(k);
+  return k;
+}
+
+function spawnAttack(){
+  const M = MODES[modeIdx];
+  const type = pickType();
+  const T = TYPES[type];
+  // 終盤ほど早口
+  const late = Math.min(1, S.t/60);
+  const win = M.window * (1 - 0.3*late);
+  S.attack = { type, remain:win, total:win };
+  const line = T.lines[Math.floor(Math.random()*T.lines.length)];
+  $('btag').textContent = T.tag; $('btag').style.background = T.color;
+  $('bubble').style.borderColor = T.color;
+  $('btext').textContent = '「' + line + '」';
+  $('bubble').classList.add('show');
+  beep(500+Math.random()*200,.05,'square',.03);
+}
+function hideBubble(){ $('bubble').classList.remove('show'); }
+
+function sayPlayer(text, bad){
+  const p = $('pbubble');
+  p.textContent = text; p.classList.toggle('bad', !!bad); p.classList.add('show');
+  clearTimeout(p._t); p._t = setTimeout(()=>p.classList.remove('show'), 900);
+}
+function bossSay(text, color='#888'){
+  $('btag').textContent = '部長'; $('btag').style.background = color;
+  $('bubble').style.borderColor = color;
+  $('btext').textContent = '「'+text+'」';
+  $('btimer').style.width = '0%';
+  $('bubble').classList.add('show');
+}
+function floatText(text, color, xPct){
+  const el = document.createElement('div');
+  el.className = 'float'; el.textContent = text; el.style.color = color;
+  el.style.left = xPct+'%'; el.style.top = '45%';
+  $('scene').appendChild(el); setTimeout(()=>el.remove(), 900);
+}
+function flash(color){
+  const f = $('flash'); f.style.background = color; f.style.opacity = .35;
+  setTimeout(()=>f.style.opacity = 0, 80);
+}
+function addPressure(v){ S.pressure = Math.max(0, Math.min(100, S.pressure + v)); }
+
+function act(type){
+  if (!S || !S.running) return;
+  const btn = document.querySelector(`.act[data-t="${type}"]`);
+  btn.classList.add('press'); setTimeout(()=>btn.classList.remove('press'),100);
+  if (S.cooldown > 0) return;
+  const T = TYPES[type];
+  if (!S.attack){
+    // 空振り
+    addPressure(7); S.combo = 0; S.cooldown = .35;
+    sayPlayer(T.reply[0], true);
+    setTimeout(()=>{ if(S.running && !S.attack) bossSay('急にどうした？'); }, 150);
+    setTimeout(()=>{ if(S.running && !S.attack) hideBubble(); }, 900);
+    sfx.bad(); $('scene').classList.remove('shake'); void $('scene').offsetWidth; $('scene').classList.add('shake');
+    return;
+  }
+  if (type === S.attack.type){
+    S.combo++; S.dodged++; S.maxCombo = Math.max(S.maxCombo, S.combo);
+    const speedBonus = S.attack.remain / S.attack.total; // 早いほど回復
+    addPressure(-(6 + 6*speedBonus + Math.min(S.combo,5)));
+    sayPlayer(T.reply[Math.floor(Math.random()*T.reply.length)]);
+    floatText(speedBonus>.6?'華麗にかわした！':'かわした！', T.color, 30);
+    sfx.ok(); playerAnim(type);
+    S.attack = null; hideBubble();
+    S.gapLeft = rand(...MODES[modeIdx].gap);
+  } else {
+    S.combo = 0; S.misses++;
+    addPressure(20);
+    sayPlayer(T.reply[0], true);
+    S.attack = null;
+    bossSay(WRONG[Math.floor(Math.random()*WRONG.length)], '#c33');
+    setTimeout(()=>{ if(S.running && !S.attack) hideBubble(); }, 700);
+    S.gapLeft = rand(...MODES[modeIdx].gap) + .4;
+    floatText('イライラ +20', '#ff6b6b', 70);
+    sfx.bad(); flash('#f00');
+    $('scene').classList.remove('shake'); void $('scene').offsetWidth; $('scene').classList.add('shake');
+  }
+}
+function rand(a,b){ return a + Math.random()*(b-a); }
+
+function playerAnim(type){
+  const ph = $('phone'), sw = $('sweat'), pl = $('pl');
+  if (type==='talk'){ ph.setAttribute('opacity','1'); setTimeout(()=>ph.setAttribute('opacity','0'),800); }
+  if (type==='work'){ let n=0; const iv=setInterval(()=>{ $('screenLines').setAttribute('transform',`translate(${(n%2)*3},0)`); if(++n>8){clearInterval(iv);$('screenLines').removeAttribute('transform');} },50); }
+  if (type==='card'){ pl.setAttribute('transform','translate(110,250)'); setTimeout(()=>pl.setAttribute('transform','translate(140,250)'),500); }
+  if (type==='angry'){ sw.setAttribute('opacity','1'); setTimeout(()=>sw.setAttribute('opacity','0'),700); }
+}
+
+function punch(byBoss){
+  if (!S || !S.running) return;
+  S.running = false;
+  cancelAnimationFrame(raf);
+  sfx.punch();
+  document.getElementById('punchBtn').classList.add('press');
+  setTimeout(()=>document.getElementById('punchBtn').classList.remove('press'),120);
+  $('cardSlot').setAttribute('opacity','1');
+  hideBubble();
+  render();
+  if (byBoss) bossSay(S.t<60 ? 'はい、押しといたから。お疲れ〜' : 'いつまでいるんだ！押したぞ！', '#c33');
+  setTimeout(()=>showResult(byBoss), byBoss?1100:500);
+}
+
+function fmt(t){
+  const total = 18*3600 + 59*60 + t;
+  const h = Math.floor(total/3600), m = Math.floor(total%3600/60), s = Math.floor(total%60);
+  const cs = Math.floor((total*100)%100);
+  return [String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'), '.'+String(cs).padStart(2,'0')];
+}
+
+function showResult(byBoss){
+  const t = S.t, M = MODES[modeIdx];
+  const [a,b] = fmt(t);
+  $('resTime').innerHTML = a + '<small style="font-size:.55em">'+b+'</small>';
+  let title, pay, rank, rcol, comment, detail;
+  if (t < 60){
+    const sec = Math.floor(t);
+    detail = `残業 59分${sec}秒 → <b>0時間</b>（切り捨て）`;
+    pay = '0円'; title = byBoss ? '部長に押された…' : '早まった…';
+    rank = 'サービス残業'; rcol = '#555';
+    comment = byBoss ? '59分ぶんの労働は会社への「寄付」になりました。' : `あと${(60-t).toFixed(2)}秒だった。59分の努力は無に帰した。`;
+    sfx.lose();
+  } else {
+    const err = t - 60;
+    detail = `残業 <b>1時間</b> 成立（+${err.toFixed(2)}秒）`;
+    pay = '+' + PAY.toLocaleString() + '円';
+    if (byBoss){ title='残業代は確保…'; rank='評価ダウン'; rcol='#8a5a00'; comment='粘りすぎて部長がブチ切れ。明日の朝礼で名指しされそう。'; }
+    else if (err < 0.1){ title='神打刻！！'; rank='伝説の社畜'; rcol='#c99a00'; comment='19:00:00ジャスト。1秒たりとも会社にタダ働きを捧げない、完璧な仕事。'; }
+    else if (err < 0.5){ title='お見事！'; rank='プロ社畜'; rcol='#2a8f5a'; comment='ほぼジャスト。部長は苦虫を噛み潰したような顔をしている。'; }
+    else if (err < 1.5){ title='成功'; rank='一人前'; rcol='#2a6fb8'; comment='1時間ぶんゲット。この調子で明日も粘ろう。'; }
+    else if (err < 4){ title='ギリ成功'; rank='見習い'; rcol='#666'; comment='残業代は出たが、余分にタダ働きしてしまった。'; }
+    else { title='残業代は確保'; rank='居残り常習犯'; rcol='#8a5a00'; comment='19時を過ぎてもダラダラ。部長の視線が痛い。'; }
+    sfx.win();
+  }
+  $('resTitle').textContent = title;
+  $('resDetail').innerHTML = detail;
+  $('resPay').textContent = pay;
+  $('resPay').style.color = t<60 ? '#ff6b6b' : '#7dffb0';
+  $('resRank').textContent = rank; $('resRank').style.background = rcol;
+  $('resComment').textContent = comment;
+  $('resStats').textContent = `難易度：${M.name} ／ かわした回数：${S.dodged} ／ 最大コンボ：${S.maxCombo} ／ ミス：${S.misses}`;
+  // best record
+  if (t>=60 && !byBoss){
+    const key = 'norakura-best-'+modeIdx;
+    try{ const prev = parseFloat(localStorage.getItem(key)); if (isNaN(prev) || t-60 < prev) { localStorage.setItem(key, String(t-60)); $('resStats').textContent += ' ／ 自己ベスト更新！'; } }catch(e){}
+  }
+  $('resOv').classList.remove('hide');
+}
+
+function updateBestLine(){
+  const parts = [];
+  MODES.forEach((m,i)=>{ try{ const v = localStorage.getItem('norakura-best-'+i); if (v!==null) parts.push(`${m.name}：+${parseFloat(v).toFixed(2)}秒`); }catch(e){} });
+  $('bestLine').textContent = parts.length ? '自己ベスト（19:00:00からの誤差）　' + parts.join(' ／ ') : '';
+}
+
+// ---- loop ----
+function loop(ts){
+  const dt = Math.min(0.05, (ts - lastTs)/1000); lastTs = ts;
+  if (!S.running) return;
+  const M = MODES[modeIdx];
+  const gdt = dt * RATE;
+  S.t += gdt;
+  S.cooldown = Math.max(0, S.cooldown - dt);
+
+  // tick sound
+  const sec = Math.floor(S.t);
+  if (sec !== S.lastSec){ S.lastSec = sec; (sec%2? sfx.tock : sfx.tick)(); }
+
+  if (S.t < 60){
+    addPressure(M.creep * dt);
+    if (S.attack){
+      S.attack.remain -= dt;
+      $('btimer').style.width = Math.max(0, S.attack.remain/S.attack.total*100) + '%';
+      if (S.attack.remain <= 0){
+        S.attack = null; S.combo = 0; S.misses++;
+        addPressure(25);
+        bossSay('……無視？', '#c33');
+        setTimeout(()=>{ if(S.running && !S.attack) hideBubble(); }, 700);
+        S.gapLeft = rand(...M.gap) + .4;
+        floatText('無視した！ +25', '#ff6b6b', 70);
+        sfx.bad(); flash('#f00');
+      }
+    } else {
+      S.gapLeft -= dt;
+      if (S.gapLeft <= 0 && S.t < 59.3) spawnAttack();
+    }
+  } else {
+    // 19時を過ぎた
+    if (S.attack){ S.attack = null; }
+    if (!S.overWarned){ S.overWarned = true; bossSay('おい、もう19時回ってるぞ！', '#c33'); }
+    addPressure(45 * dt);
+  }
+
+  if (S.pressure >= 100){ punch(true); return; }
+  render();
+  raf = requestAnimationFrame(loop);
+}
+
+function render(){
+  const M = MODES[modeIdx];
+  const [a,b] = fmt(S.t);
+  const hidden = M.hide && S.t >= 60 - M.hide && S.running;
+  const c = $('clock');
+  if (hidden){
+    c.innerHTML = '18:59:<span>??</span><small>.??</small>';
+  } else c.innerHTML = a + '<small>'+b+'</small>';
+  c.classList.toggle('over', S.t >= 60);
+  $('blocker').classList.toggle('on', !!hidden);
+
+  // wall clock
+  const minDeg = (59 + S.t/60) * 6, secDeg = S.t * 6;
+  $('hMin').setAttribute('transform', `rotate(${minDeg})`);
+  $('hSec').setAttribute('transform', `rotate(${hidden ? 180 : secDeg})`);
+
+  // pressure
+  const p = S.pressure;
+  $('pbar').style.width = p + '%';
+  $('pval').textContent = Math.round(p) + '%';
+  $('combo').textContent = S.combo >= 2 ? `のらりくらり ×${S.combo}` : '';
+
+  // boss position & face
+  const target = 680 - (p/100) * 330;
+  S.bossX += (target - S.bossX) * 0.08;
+  const bob = Math.abs(target - S.bossX) > 2 ? Math.sin(performance.now()/80)*3 : 0;
+  $('boss').setAttribute('transform', `translate(${S.bossX.toFixed(1)},${(300+bob).toFixed(1)})`);
+  const ang = p/100;
+  $('browL').setAttribute('y1', -12 - 8*ang); $('browL').setAttribute('y2', -12 + 6*ang);
+  $('browR').setAttribute('y1', -12 + 6*ang); $('browR').setAttribute('y2', -12 - 8*ang);
+  const mq = 22 - 12*ang - 4; // smile -> frown
+  $('mouth').setAttribute('d', `M-10,18 Q0,${(mq).toFixed(1)} 10,18`);
+  const r = Math.round(233 + 22*ang), g = Math.round(196 - 110*ang), bl = Math.round(160 - 90*ang);
+  $('face').setAttribute('fill', `rgb(${r},${g},${bl})`);
+  $('vein').setAttribute('opacity', p > 50 ? 1 : 0);
+  $('steam').setAttribute('opacity', p > 75 ? (0.5+0.5*Math.sin(performance.now()/120)) : 0);
+  $('sweat').setAttribute('opacity', p > 80 ? 1 : $('sweat').getAttribute('opacity'));
+
+  // bubble position near boss head
+  const sc = $('scene'), w = sc.clientWidth, bub = $('bubble');
+  const bw = bub.offsetWidth || 200;
+  let x = S.bossX/800*w;
+  x = Math.max(bw/2 + 6, Math.min(w - bw/2 - 6, x));
+  bub.style.left = x + 'px';
+}
+
+// ---- input ----
+document.addEventListener('keydown', e => {
+  if (e.repeat) return;
+  const k = e.key.toLowerCase();
+  if (KEYS[k]) { act(KEYS[k]); e.preventDefault(); }
+  else if (k === ' ' || e.code === 'Space'){
+    e.preventDefault();
+    if (S && S.running) punch(false);
+  } else if (k === 'r' && !$('resOv').classList.contains('hide')) start(modeIdx);
+  else if (['1','2','3'].includes(k) && !$('startOv').classList.contains('hide')) start(+k-1);
+});
+document.querySelectorAll('.act').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); act(b.dataset.t); }));
+$('punchBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (S && S.running) punch(false); });
+document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => start(+b.dataset.m)));
+$('retry').addEventListener('click', () => start(modeIdx));
+$('toMenu').addEventListener('click', () => { $('resOv').classList.add('hide'); updateBestLine(); $('startOv').classList.remove('hide'); });
+
+// initial render
+S = newState(); S.running = false; render(); updateBestLine();
+})();
+</script>
+</body>
+</html>
