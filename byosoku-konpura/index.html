@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#285446" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#132a24" media="(prefers-color-scheme: dark)">
+<title>秒速コンプラ判定</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Dela+Gothic+One&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: a green cutting mat is the desk. One paper slip lies on it; the two stamp buttons wait under the thumb. */
+  --mat:#285446;
+  --slip:#fbfcf8;
+  --ink:#1c2420;
+  --rule:#357d6a;
+  --shu:#e0322a;
+  --ai:#2a4fa0;
+
+  --mat-deep:#1d4136;
+  --mat-line:rgba(232,245,238,.10);
+  --mat-line-minor:rgba(232,245,238,.045);
+  --mat-ink:#eef6f1;
+  --mat-sub:#a6cbbd;
+  --slip-edge:#cfdcd4;
+  --rule-faint:rgba(53,125,106,.30);
+  --ink-sub:#55635c;
+  --shu-deep:#a3231d;
+  --ai-deep:#1a3470;
+  --sumi:#24231f;
+  --gray-ink:#69706c;
+  --marker:#ffee58;
+  --lift:0 12px 26px rgba(4,20,15,.34);
+
+  --display:"Dela Gothic One","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Noto Sans CJK JP",sans-serif;
+  --body:"BIZ UDPGothic","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Noto Sans CJK JP","Yu Gothic","Meiryo",sans-serif;
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -9 0 0 0 6.1'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --mat:#132a24; --slip:#e4e9e3; --ink:#141b17; --rule:#2f6f5e; --shu:#e23a2f; --ai:#3157ad;
+    --mat-deep:#0d201b; --mat-line:rgba(220,240,230,.075); --mat-line-minor:rgba(220,240,230,.035);
+    --mat-ink:#e3eee8; --mat-sub:#8fb4a6; --slip-edge:#a9b8ae; --rule-faint:rgba(47,111,94,.34);
+    --ink-sub:#46534c; --shu-deep:#97211b; --ai-deep:#1b3778; --sumi:#1b1a18; --gray-ink:#5f6662;
+    --marker:#f1e04c; --lift:0 12px 26px rgba(0,0,0,.5);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --mat:#132a24; --slip:#e4e9e3; --ink:#141b17; --rule:#2f6f5e; --shu:#e23a2f; --ai:#3157ad;
+  --mat-deep:#0d201b; --mat-line:rgba(220,240,230,.075); --mat-line-minor:rgba(220,240,230,.035);
+  --mat-ink:#e3eee8; --mat-sub:#8fb4a6; --slip-edge:#a9b8ae; --rule-faint:rgba(47,111,94,.34);
+  --ink-sub:#46534c; --shu-deep:#97211b; --ai-deep:#1b3778; --sumi:#1b1a18; --gray-ink:#5f6662;
+  --marker:#f1e04c; --lift:0 12px 26px rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{height:100%;margin:0}
+html{touch-action:manipulation}
+body{
+  background-color:var(--mat);
+  background-image:
+    linear-gradient(var(--mat-line) 1px,transparent 1px),
+    linear-gradient(90deg,var(--mat-line) 1px,transparent 1px),
+    linear-gradient(var(--mat-line-minor) 1px,transparent 1px),
+    linear-gradient(90deg,var(--mat-line-minor) 1px,transparent 1px);
+  background-size:60px 60px,60px 60px,12px 12px,12px 12px;
+  background-position:-1px -1px;
+  color:var(--mat-ink);
+  font-family:var(--body);
+  font-size:16px;
+  line-height:1.6;
+  line-break:strict;
+  -webkit-text-size-adjust:100%;
+  -webkit-tap-highlight-color:transparent;
+}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+button:focus-visible,textarea:focus-visible{outline:3px solid var(--marker);outline-offset:3px}
+p,h1,h2,ol,dl,dd{margin:0}
+
+#app{max-width:540px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+.screen{display:none;flex-direction:column;gap:14px;padding:16px 16px calc(20px + env(safe-area-inset-bottom))}
+.screen.is-active{display:flex}
+#scr-title,#scr-result{flex:1 0 auto}
+#scr-title{justify-content:center}
+
+/* ---------- shared paper ---------- */
+.slip{position:relative;background:var(--slip);color:var(--ink);border-radius:4px;box-shadow:0 1px 0 var(--slip-edge),var(--lift)}
+.doc-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-bottom:2px solid var(--rule);padding-bottom:6px}
+.doc-title{font-family:var(--display);font-weight:900;font-synthesis:none;color:var(--rule);font-size:18px;letter-spacing:.3em;line-height:1.3}
+.doc-date{font-size:12px;color:var(--ink-sub);font-variant-numeric:tabular-nums}
+.seal{display:inline-grid;place-items:center;flex:none;border-radius:50%;color:var(--shu);border:2.5px solid currentColor;font-family:var(--display);font-weight:900;font-synthesis:none;font-style:normal;line-height:1;mix-blend-mode:multiply;-webkit-mask-image:var(--grain);mask-image:var(--grain);-webkit-mask-size:160px 160px;mask-size:160px 160px}
+.seal b{font-weight:inherit}
+.sign{display:flex;justify-content:flex-end;align-items:center;gap:10px;font-size:13px;color:var(--ink-sub)}
+.seal-sign{width:46px;height:46px;transform:rotate(-8deg)}
+.seal-sign b{writing-mode:vertical-rl;font-size:15px;letter-spacing:.04em}
+
+/* ---------- title: the appointment letter ---------- */
+.jirei{padding:16px 18px 16px;display:flex;flex-direction:column;gap:8px}
+.jirei .doc-title{font-size:22px;letter-spacing:.6em}
+.appoint{font-size:14px;color:var(--ink-sub)}
+.appoint.end{text-align:right;margin-top:-6px}
+h1{font-family:var(--display);font-weight:900;font-synthesis:none;font-size:clamp(30px,9vw,46px);line-height:1.12;letter-spacing:.01em;color:var(--ink);text-wrap:balance}
+h1 .kakari{font-size:.5em;margin-left:.1em}
+.duty{font-size:14px}
+.ki{font-size:14px;display:grid;gap:2px}
+.ki-h{text-align:center;letter-spacing:1em}
+.ki ol{padding-left:1.7em}
+.ki li::marker{color:var(--rule);font-variant-numeric:tabular-nums}
+.ijo{text-align:right;margin-top:-1.6em}
+
+.field-label{font-size:12px;color:var(--mat-sub);margin-bottom:6px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:12px;background:var(--mat-deep)}
+.seg button{border:0;background:transparent;color:var(--mat-ink);padding:10px 4px;border-radius:8px;font-weight:700;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--slip);color:var(--ink)}
+
+.modes{display:grid;gap:12px}
+.mode{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:0;border-radius:12px;padding:12px 16px;background:var(--slip);color:var(--ink);box-shadow:0 5px 0 var(--slip-edge),0 10px 18px rgba(0,0,0,.22);transition:transform .07s ease,box-shadow .07s ease}
+.mode:active{transform:translateY(4px);box-shadow:0 1px 0 var(--slip-edge),0 4px 10px rgba(0,0,0,.22)}
+.mode-name{font-family:var(--display);font-weight:900;font-synthesis:none;font-size:21px;line-height:1.3}
+.mode-desc{font-size:13px;color:var(--ink-sub)}
+.mode.prod{padding-top:22px}
+.mode.prod::before{content:"";position:absolute;left:0;right:0;top:0;height:8px;background:repeating-linear-gradient(-45deg,var(--shu) 0 8px,var(--slip) 8px 16px)}
+.best{font-size:13px;color:var(--mat-sub);font-variant-numeric:tabular-nums}
+.foot{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;font-size:12px;color:var(--mat-sub)}
+.sound{flex:none;display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--mat-sub);background:transparent;color:var(--mat-ink);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700}
+.sound svg{width:16px;height:16px}
+
+/* ---------- game ---------- */
+#scr-game{position:fixed;inset:0;margin:0 auto;max-width:540px;gap:10px;padding:12px 16px calc(16px + env(safe-area-inset-bottom));overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.prod-tape{display:none;flex:none;height:8px;margin:-12px -16px 0;background:repeating-linear-gradient(-45deg,var(--shu) 0 10px,var(--slip) 10px 20px)}
+.prod-chip{display:none;font-family:var(--display);font-weight:900;font-synthesis:none;font-size:12px;background:var(--shu);color:#fff;padding:3px 8px 4px;border-radius:3px}
+#scr-game.is-prod .prod-tape{display:block}
+#scr-game.is-prod .prod-chip{display:inline-block}
+.hud{display:flex;align-items:center;gap:14px;flex:none}
+.hud-gap{flex:1}
+.quit{border:1.5px solid var(--mat-sub);background:transparent;color:var(--mat-ink);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:700}
+.stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
+.stat small{font-size:11px;color:var(--mat-sub)}
+.stat b{font-size:18px;font-variant-numeric:tabular-nums}
+
+.stage{position:relative;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:10px}
+.timer{flex:none;height:8px;border-radius:4px;background:rgba(255,255,255,.14);overflow:hidden}
+.timer i{display:block;height:100%;width:100%;background:var(--mat-ink);transform-origin:left center;will-change:transform}
+.timer.low i{background:var(--marker);animation:blink .36s steps(2,jump-none) infinite}
+@keyframes blink{50%{opacity:.45}}
+
+.consult{padding:14px 14px 16px}
+.consult.enter{animation:slipIn .16s ease-out}
+@keyframes slipIn{from{transform:translateY(10px);opacity:.3}}
+.consult.shake{animation:shake .4s ease}
+@keyframes shake{15%{transform:translateX(-9px) rotate(-.6deg)}30%{transform:translateX(8px) rotate(.5deg)}45%{transform:translateX(-6px)}60%{transform:translateX(5px)}75%{transform:translateX(-3px)}}
+.is-wait .consult,.is-wait .timer{visibility:hidden}
+.consult-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.fields{flex:1;min-width:0}
+.kv{margin-top:6px}
+.kv div{display:grid;grid-template-columns:3.6em 1fr;align-items:baseline;border-bottom:1px solid var(--rule-faint);padding:3px 0}
+.kv dt{font-size:11px;color:var(--rule)}
+.kv dd{font-size:13px;font-weight:700;overflow-wrap:anywhere}
+.seal-boxes{display:flex;flex:none;border:1.5px solid var(--rule)}
+.seal-box{width:60px;display:flex;flex-direction:column}
+.seal-box+.seal-box{border-left:1.5px solid var(--rule)}
+.sb-h{display:block;text-align:center;font-size:11px;color:var(--rule);line-height:1.7;border-bottom:1.5px solid var(--rule)}
+.sb-c{position:relative;height:60px;display:grid;place-items:center}
+.seal.mini{width:40px;height:40px;font-size:19px;transform:rotate(var(--rot,-6deg))}
+.seal.mini.two{font-size:13px}
+.q-label{margin-top:12px;font-size:11px;color:var(--rule)}
+.q-text{--lh:1.72em;margin-top:2px;font-size:clamp(19px,5.4vw,25px);font-weight:700;line-height:var(--lh);min-height:calc(var(--lh) * 3);background-image:linear-gradient(to bottom,transparent calc(var(--lh) - 1px),var(--rule-faint) calc(var(--lh) - 1px));background-size:100% var(--lh);word-break:auto-phrase;overflow-wrap:anywhere;text-wrap:pretty}
+
+.stamp{position:absolute;pointer-events:none;opacity:0;font-style:normal;font-family:var(--display);font-weight:900;font-synthesis:none;line-height:1;color:var(--shu);mix-blend-mode:multiply;transform:var(--tf);-webkit-mask-image:var(--grain);mask-image:var(--grain);-webkit-mask-size:160px 160px;mask-size:160px 160px}
+.stamp.show{animation:stampIn .24s cubic-bezier(.2,.85,.3,1.25) forwards}
+@keyframes stampIn{0%{opacity:0;transform:var(--tf) scale(1.9)}55%{opacity:1;transform:var(--tf) scale(.93)}100%{opacity:.9;transform:var(--tf) scale(1)}}
+.stamp.ok{--tf:rotate(-14deg);left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;border:2.5px solid currentColor;box-shadow:inset 0 0 0 2px var(--slip),inset 0 0 0 4px currentColor;display:grid;place-items:center}
+.stamp.ok b{writing-mode:vertical-rl;font-weight:inherit;font-size:16px;letter-spacing:.04em}
+.stamp.big{--tf:translate(-50%,-50%) rotate(-9deg);left:50%;top:60%;border:5px solid currentColor;border-radius:6px;padding:6px 16px 8px;font-size:clamp(34px,10vw,48px);white-space:nowrap}
+.stamp.big.ng{color:var(--sumi)}
+.stamp.big.to{color:var(--gray-ink)}
+.stamp.big.prod{color:var(--shu)}
+.fusen{position:absolute;right:-6px;bottom:-14px;z-index:2;background:var(--marker);color:var(--ink);font-family:var(--display);font-weight:900;font-synthesis:none;font-size:15px;line-height:1;padding:7px 11px 8px;transform:rotate(4deg);box-shadow:0 3px 6px rgba(0,0,0,.28);opacity:0;transition:opacity .12s}
+.fusen.on{opacity:1}
+
+.verdict{flex:none;min-height:96px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.v-ok{font-family:var(--display);font-weight:900;font-synthesis:none;font-size:24px;line-height:1.2;color:var(--marker);font-variant-numeric:tabular-nums}
+.v-ok small{font-family:var(--body);font-weight:700;font-size:14px;color:var(--mat-sub);margin-left:10px}
+.v-note{font-size:14px;font-weight:700}
+.v-chip{display:inline-block;font-family:var(--display);font-weight:900;font-synthesis:none;font-size:14px;line-height:1;padding:5px 10px 6px;border-radius:3px;background:var(--shu);color:#fff}
+.v-chip.to{background:#5c6560}
+.v-oops{font-size:15px;font-weight:700;line-height:1.5}
+.v-ans{font-size:13px;color:var(--mat-sub)}
+.v-ans b{color:var(--mat-ink);margin-left:.3em}
+
+.count{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;font-family:var(--display);font-weight:900;font-synthesis:none;font-size:104px;line-height:1;color:var(--mat-ink)}
+.count b{font-weight:inherit;animation:countIn .42s ease-out both}
+.count b.go{font-size:56px;color:var(--marker)}
+@keyframes countIn{from{transform:scale(1.5);opacity:0}}
+.pause{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;border-radius:8px;background:rgba(10,30,24,.9);font-family:var(--display);font-weight:900;font-synthesis:none;font-size:22px}
+
+.answers{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ans{border:0;border-radius:16px;min-height:clamp(84px,14vh,116px);display:flex;align-items:center;justify-content:center;gap:10px;color:#fff;font-family:var(--display);font-weight:900;font-synthesis:none;font-size:clamp(24px,7vw,30px);letter-spacing:.04em;transition:transform .07s ease,box-shadow .07s ease}
+.ans svg{width:34px;height:34px;flex:none}
+.ans.yes{background:var(--shu);box-shadow:0 6px 0 var(--shu-deep),0 10px 18px rgba(0,0,0,.25)}
+.ans.no{background:var(--ai);box-shadow:0 6px 0 var(--ai-deep),0 10px 18px rgba(0,0,0,.25)}
+.ans.pressed{transform:translateY(5px)}
+.ans.yes.pressed{box-shadow:0 1px 0 var(--shu-deep),0 3px 8px rgba(0,0,0,.25)}
+.ans.no.pressed{box-shadow:0 1px 0 var(--ai-deep),0 3px 8px rgba(0,0,0,.25)}
+.ans.hint{outline:4px solid var(--marker);outline-offset:3px}
+.is-wait .ans{opacity:.55}
+
+/* ---------- result: the evaluation notice ---------- */
+.report{padding:16px 18px 18px;display:flex;flex-direction:column;gap:12px}
+.res-mode{font-size:12px;color:var(--ink-sub)}
+.res-main{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+.res-label{font-size:12px;color:var(--rule)}
+.res-title{font-family:var(--display);font-weight:900;font-synthesis:none;font-size:clamp(22px,6.4vw,32px);line-height:1.25;word-break:keep-all;overflow-wrap:anywhere}
+.seal.rank{width:72px;height:72px;border-width:4px;font-size:36px;transform:rotate(-10deg);box-shadow:inset 0 0 0 3px var(--slip),inset 0 0 0 5.5px var(--shu)}
+.seal.rank.two{font-size:18px}
+.seal.rank.two b{writing-mode:vertical-rl;letter-spacing:.04em}
+.res-comment{font-size:15px}
+.sheet{display:grid;grid-template-columns:repeat(3,1fr);border-top:1.5px solid var(--rule);border-left:1.5px solid var(--rule)}
+.sheet div{border-right:1.5px solid var(--rule);border-bottom:1.5px solid var(--rule);padding:6px 8px 7px;min-width:0}
+.sheet dt{font-size:11px;color:var(--rule)}
+.sheet dd{font-weight:700;font-size:17px;line-height:1.35;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.stamp.newbest{--tf:rotate(-6deg);left:18px;bottom:22px;border:3px solid currentColor;border-radius:4px;padding:5px 9px 6px;font-size:16px;opacity:.94}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{border:0;border-radius:12px;padding:13px 12px;font-weight:700;font-size:15px;background:var(--mat-deep);color:var(--mat-ink);box-shadow:inset 0 0 0 1.5px var(--mat-sub)}
+.btn.primary{grid-column:1 / -1;background:var(--slip);color:var(--ink);font-family:var(--display);font-weight:900;font-synthesis:none;font-size:20px;box-shadow:0 5px 0 var(--slip-edge),0 10px 18px rgba(0,0,0,.22)}
+.btn.primary:active{transform:translateY(4px);box-shadow:0 1px 0 var(--slip-edge)}
+.toast{min-height:1.4em;font-size:13px;color:var(--marker);text-align:center}
+.copybox{display:grid;gap:6px;font-size:13px;color:var(--mat-sub)}
+.copybox textarea{width:100%;border:0;border-radius:8px;padding:10px;font:inherit;font-size:14px;background:var(--slip);color:var(--ink);resize:none}
+.lesson{background:var(--marker);color:var(--ink);padding:14px 16px 16px;border-radius:2px;transform:rotate(-1deg);box-shadow:0 4px 10px rgba(0,0,0,.28);display:grid;gap:4px}
+.lesson h2{font-family:var(--display);font-weight:900;font-synthesis:none;font-size:17px;line-height:1.35}
+.lesson p{font-size:14px}
+.ledger{padding:14px 16px 6px}
+.ledger-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px 12px;border-bottom:2px solid var(--rule);padding-bottom:8px}
+.ledger h2{font-family:var(--display);font-weight:900;font-synthesis:none;font-size:18px;color:var(--rule);letter-spacing:.15em}
+.tabs{display:flex;gap:6px}
+.tabs button{border:1.5px solid var(--rule);background:transparent;color:var(--rule);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:700}
+.tabs button[aria-pressed="true"]{background:var(--rule);color:var(--slip)}
+.review{list-style:none;padding:0}
+.rv{display:grid;grid-template-columns:32px 1fr;gap:3px 12px;padding:12px 0 13px;border-bottom:1px solid var(--rule-faint)}
+.rv:last-child{border-bottom:0}
+.rv-mark{grid-row:1 / span 4;width:30px;height:30px;display:grid;place-items:center;border:2.5px solid currentColor;border-radius:50%;font-family:var(--display);font-weight:900;font-synthesis:none;font-size:13px}
+.rv-mark svg{width:16px;height:16px}
+.rv.ok .rv-mark{color:var(--shu)}
+.rv.ng .rv-mark{color:var(--sumi);border-radius:5px}
+.rv.to .rv-mark{color:var(--gray-ink);border-radius:5px}
+.rv-meta{font-size:11px;color:var(--rule)}
+.rv-q{font-weight:700;font-size:15px;line-height:1.55}
+.rv-a{font-size:13px;color:var(--ink-sub)}
+.rv-a b.y{color:var(--shu)}
+.rv-a b.n{color:var(--ai)}
+.rv-e{font-size:14px;line-height:1.65;border-left:3px solid var(--rule-faint);padding-left:9px;margin-top:3px}
+.rv-empty{padding:16px 0;font-size:14px}
+
+@media (max-height:640px){
+  #scr-game{gap:8px;padding-top:8px}
+  .consult{padding:10px 12px 12px}
+  .q-label{margin-top:8px}
+  .q-text{font-size:18px;min-height:calc(var(--lh) * 2)}
+  .sb-c{height:48px}
+  .seal-box{width:52px}
+  .seal.mini{width:34px;height:34px;font-size:16px}
+  .stamp.ok{width:44px;height:44px;margin:-22px 0 0 -22px}
+  .stamp.ok b{font-size:14px}
+  .verdict{min-height:78px}
+  .v-oops{font-size:14px}
+  .ans{min-height:70px;font-size:22px}
+  .ans svg{width:28px;height:28px}
+}
+@media (prefers-reduced-motion:reduce){
+  .consult.enter,.consult.shake,.count b,.timer.low i{animation:none}
+  .stamp.show{animation:stampFade .15s forwards}
+  @keyframes stampFade{from{opacity:0}to{opacity:.94}}
+  .ans,.mode{transition:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<section class="screen is-active" id="scr-title" aria-labelledby="title-h">
+  <article class="slip jirei">
+    <header class="doc-head">
+      <p class="doc-title">辞令</p>
+      <p class="doc-date" id="title-date"></p>
+    </header>
+    <p class="appoint">あなたに</p>
+    <h1 id="title-h">秒速コンプラ判定<span class="kakari">係</span></h1>
+    <p class="appoint end">を命ずる。</p>
+    <p class="duty">職場や家族から次々に届く相談に、はい／いいえで即答すること。</p>
+    <div class="ki">
+      <p class="ki-h">記</p>
+      <ol>
+        <li>速く答えるほど高得点</li>
+        <li>迷うと時間切れ</li>
+        <li>判断を誤ると始末書</li>
+      </ol>
+      <p class="ijo">以上</p>
+    </div>
+    <footer class="sign">
+      <span>人事部長</span>
+      <span class="seal seal-sign" aria-hidden="true"><b>人事</b></span>
+    </footer>
+  </article>
+
+  <div class="genre">
+    <p class="field-label" id="genre-label">出題ジャンル</p>
+    <div class="seg" role="group" aria-labelledby="genre-label">
+      <button type="button" id="genre-mix" data-genre="mix" aria-pressed="true">ミックス</button>
+      <button type="button" id="genre-gen" data-genre="gen" aria-pressed="false">一般向け</button>
+      <button type="button" id="genre-dev" data-genre="dev" aria-pressed="false">開発者向け</button>
+    </div>
+  </div>
+
+  <div class="modes">
+    <button type="button" class="mode" id="start-normal">
+      <span class="mode-name">通常モード</span>
+      <span class="mode-desc">全15問。ミスしても最後まで続きます</span>
+    </button>
+    <button type="button" class="mode prod" id="start-prod">
+      <span class="mode-name">本番環境モード</span>
+      <span class="mode-desc">1回のミスで終了。だんだん速くなります</span>
+    </button>
+  </div>
+
+  <p class="best" id="best-line"></p>
+
+  <div class="foot">
+    <p>ネタ多めですが、解説はわりとまじめです。<br>キーボードなら ←キーで「はい」、→キーで「いいえ」。</p>
+    <button type="button" class="sound" id="btn-sound" aria-pressed="true">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path id="sound-wave" d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path id="sound-mute" d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" hidden/></svg>
+      <span id="sound-label">効果音オン</span>
+    </button>
+  </div>
+</section>
+
+<section class="screen" id="scr-game" aria-label="判定中">
+  <div class="prod-tape" aria-hidden="true"></div>
+  <header class="hud">
+    <button type="button" class="quit" id="btn-quit">やめる</button>
+    <span class="prod-chip">本番環境</span>
+    <span class="hud-gap"></span>
+    <p class="stat"><small id="hud-prog-label">問題</small><b id="hud-prog">1/15</b></p>
+    <p class="stat"><small>スコア</small><b id="hud-score">0</b></p>
+    <p class="stat"><small>始末書</small><b id="hud-miss">0枚</b></p>
+  </header>
+  <div class="stage" id="stage">
+    <div class="timer" id="timer" aria-hidden="true"><i id="timer-fill"></i></div>
+    <article class="slip consult" id="slip">
+      <header class="consult-head">
+        <div class="fields">
+          <p class="doc-title">相談票</p>
+          <dl class="kv">
+            <div><dt>No.</dt><dd id="q-no">001</dd></div>
+            <div><dt>区分</dt><dd id="q-cat"></dd></div>
+            <div><dt>差出人</dt><dd id="q-who"></dd></div>
+          </dl>
+        </div>
+        <div class="seal-boxes" aria-hidden="true">
+          <div class="seal-box"><span class="sb-h">担当</span><div class="sb-c"><i class="seal mini" id="q-seal"></i></div></div>
+          <div class="seal-box"><span class="sb-h">判定</span><div class="sb-c"><i class="stamp ok" id="stamp-ok"></i></div></div>
+        </div>
+      </header>
+      <p class="q-label">相談内容</p>
+      <p class="q-text" id="q-text" aria-live="polite"></p>
+      <i class="stamp big" id="stamp-big" aria-hidden="true"></i>
+      <span class="fusen" id="fusen" aria-hidden="true"></span>
+    </article>
+    <div class="verdict" id="verdict" aria-live="polite"></div>
+    <div class="count" id="count" hidden></div>
+    <div class="pause" id="pause" hidden>
+      <p>一時停止中</p>
+      <button type="button" class="btn primary" id="btn-resume">再開する</button>
+    </div>
+  </div>
+  <div class="answers">
+    <button type="button" class="ans yes" id="btn-yes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="3.2"/></svg><span>はい</span></button>
+    <button type="button" class="ans no" id="btn-no"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 5.5l13 13M18.5 5.5l-13 13" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg><span>いいえ</span></button>
+  </div>
+</section>
+
+<section class="screen" id="scr-result" aria-labelledby="res-title">
+  <article class="slip report">
+    <header class="doc-head">
+      <p class="doc-title">人事評価通知書</p>
+      <p class="doc-date" id="res-date"></p>
+    </header>
+    <p class="res-mode" id="res-mode"></p>
+    <div class="res-main">
+      <div>
+        <p class="res-label">あなたの称号</p>
+        <h2 class="res-title" id="res-title"></h2>
+      </div>
+      <span class="seal rank" id="res-rank" aria-hidden="true"></span>
+    </div>
+    <p class="res-comment" id="res-comment"></p>
+    <dl class="sheet" id="res-sheet"></dl>
+    <i class="stamp newbest" id="res-newbest" hidden>自己ベスト</i>
+    <footer class="sign">
+      <span>人事部長</span>
+      <span class="seal seal-sign" aria-hidden="true"><b>人事</b></span>
+    </footer>
+  </article>
+  <div class="actions">
+    <button type="button" class="btn primary" id="btn-retry">もう一回</button>
+    <button type="button" class="btn" id="btn-home">タイトルへ</button>
+    <button type="button" class="btn" id="btn-copy">結果をコピー</button>
+  </div>
+  <p class="toast" id="toast" role="status"></p>
+  <div class="copybox" id="copybox" hidden>
+    <label for="copy-text">自動でコピーできませんでした。下の文章を選んでコピーしてください</label>
+    <textarea id="copy-text" rows="3" readonly></textarea>
+  </div>
+  <aside class="lesson">
+    <h2>最後にひとつだけ、まじめな話</h2>
+    <p>このゲームは「急がせる」ことで判断ミスを誘っていました。実はこれ、詐欺の基本テクニックと同じです。現実で「至急」「今すぐ」と言われたら、反射で押さずに一呼吸おきましょう。</p>
+  </aside>
+  <section class="slip ledger" aria-labelledby="ledger-h">
+    <header class="ledger-head">
+      <h2 id="ledger-h">ふりかえり台帳</h2>
+      <div class="tabs" role="group" aria-label="表示するお題">
+        <button type="button" id="tab-ng" aria-pressed="true">ミスしたお題</button>
+        <button type="button" id="tab-all" aria-pressed="false">すべて</button>
+      </div>
+    </header>
+    <ol class="review" id="review"></ol>
+  </section>
+</section>
+
+</div>
+<script>
+(function () {
+"use strict";
+
+/* ===== お題データ =====
+   g: gen=一般向け / dev=開発者向け
+   c: 区分, w: 差出人, q: 相談内容, a: 1=はい が正解 / 0=いいえ が正解
+   o: 間違えた時の顛末（ネタ）, e: 解説（まじめ） */
+const CAT = { pw: "パスワード・認証", scam: "詐欺・フィッシング", leak: "情報漏洩", lit: "情報リテラシー", ai: "AI", dev: "開発・運用" };
+const Q = [
+{g:"gen",c:"pw",w:"新人",q:"パスワード、全部のサイトで同じにしておけば覚えやすくて安全ですよね？",a:0,o:"1か所から漏れて、全アカウントが芋づる式に乗っ取られました",e:"使い回すと、1つのサイトから漏れただけで、ほかのサイトにも次々ログインされます。サイトごとに別のパスワードを。"},
+{g:"gen",c:"pw",w:"先輩",q:"パスワード管理アプリ、使ってみてもいい？",a:1,o:"モニターの付箋が、今日も1枚増えました",e:"管理アプリなら、長くてバラバラなパスワードを覚えずに使えます。アプリ自体のパスワードと2段階認証だけは、しっかり設定を。"},
+{g:"gen",c:"pw",w:"情シス",q:"社員のパスワード、3か月ごとに必ず変更させるべきですよね？",a:0,o:"全員のパスワードが「…01」「…02」と連番になりました",e:"強制的な定期変更は、末尾の数字だけ変えた弱いパスワードを生みがち。今は「漏れた疑いがある時に変える」が主流で、総務省や米国の指針も定期変更は不要としています。"},
+{g:"gen",c:"pw",w:"友人",q:"「Password1!」って、大文字も数字も記号も入ってるから強いよね？",a:0,o:"攻撃者が最初に試すリストに、しっかり載っていました",e:"よくある形は、攻撃側の辞書にすでに入っています。記号の有無より、長さと推測されにくさが大事です。"},
+{g:"gen",c:"pw",w:"母",q:"ネットバンクのパスワード、お父さんの誕生日にしてもいい？",a:0,o:"SNSの誕生日祝いの投稿から、一瞬でバレました",e:"誕生日・電話番号・ペットの名前など、調べれば分かる情報はすぐ推測されます。"},
+{g:"gen",c:"pw",w:"自分",q:"2段階認証（ログイン時のもう1つの確認）、オンにしておくべき？",a:1,o:"パスワードだけで、あっさり乗っ取られました",e:"パスワードが漏れても、もう1つの確認があれば乗っ取りをかなり防げます。大事なサービスから順にオンに。"},
+{g:"gen",c:"pw",w:"謎の電話",q:"「サポート担当です。いまSMSで届いた6桁のコードを読み上げてください」…教える？",a:0,o:"その6桁で、アカウントが乗っ取られました",e:"認証コードは本人だけが使うもの。本物の担当者がコードを聞いてくることは、まずありません。"},
+{g:"gen",c:"pw",w:"後輩",q:"指紋や顔でログインできる「パスキー」、使ってみていいですか？",a:1,o:"パスワードを打ち込む日々が、まだまだ続きます",e:"パスキーは偽サイトでは使えない仕組みなので、フィッシング詐欺に強いのが特長です。対応サービスなら積極的に。"},
+{g:"gen",c:"pw",w:"隣の席の人",q:"パスワードを忘れるので、付箋に書いてモニターに貼っていい？",a:0,o:"テレビ取材の映像に、ばっちり映り込みました",e:"人目につく場所のメモは誰でも読めます。実際に、取材映像にパスワードの付箋が映り込んだ例も。管理アプリを使いましょう。"},
+{g:"gen",c:"pw",w:"父",q:"Wi-Fiルーターの管理パスワード、最初の「admin」のままでいいよな？",a:0,o:"家のルーターが、知らない誰かの攻撃の踏み台になりました",e:"初期パスワードは、説明書やネットで誰でも調べられます。使い始めたらすぐ変更を。"},
+{g:"gen",c:"pw",w:"自分",q:"パスワードは、関係のない単語をいくつもつなげた長いフレーズにするのが有効？",a:1,o:"短くて複雑な「覚えられない呪文」に逆戻りしました",e:"長さは強さ。関係のない単語を組み合わせた長いフレーズ（パスフレーズ）は、推測されにくく覚えやすい方法です。"},
+{g:"gen",c:"pw",w:"自分",q:"パスワードを「password」にしておけば、逆に誰も試さないよね？",a:0,o:"真っ先に試されました",e:"「password」や「123456」は、よく使われるパスワードのランキング上位の常連。真っ先に試されます。"},
+{g:"gen",c:"pw",w:"弟",q:"ゲームで「レアアイテムあげるから、IDとパスワード教えて」って言われた。教えていい？",a:0,o:"アカウントごと、レアアイテムにされました",e:"プレゼントや代行を口実にした乗っ取りは定番。パスワードは誰にも教えないのが基本です。"},
+{g:"gen",c:"pw",w:"自分",q:"身に覚えのない「新しい端末からログイン」通知。公式アプリから確認して、パスワードを変える？",a:1,o:"放っておいた結果、アカウントが乗っ取られました",e:"乗っ取りのサインかもしれません。ただし通知メール自体が偽物のこともあるので、メールのリンクではなく公式アプリや公式サイトから確認を。"},
+
+{g:"gen",c:"scam",w:"母",q:"「荷物をお届けできませんでした」ってSMSが来たの。リンク押していい？",a:0,o:"偽サイトに、カード番号まで入力してしまいました",e:"宅配業者を名乗る偽SMSは定番の手口。荷物の確認は、公式アプリや自分で開いた公式サイトから。"},
+{g:"gen",c:"scam",w:"自分",q:"怪しいメールが来た。リンクは押さずに、公式アプリから確認する。これで正解？",a:1,o:"…では、どうするつもりだったんですか",e:"メールのリンクではなく、ブックマークや公式アプリなど「自分で用意した入口」から確認するのが鉄則です。"},
+{g:"gen",c:"scam",w:"社長（？）",q:"「極秘の案件だ。今日中にこの口座へ振り込んでくれ」…すぐ振り込む？",a:0,o:"本物の社長は、そのころゴルフ中でした",e:"社長や取引先になりすまして送金させる詐欺（ビジネスメール詐欺）です。必ず別の連絡手段で本人に確認を。"},
+{g:"gen",c:"scam",w:"部長（LINE）",q:"「至急、電子マネーのカードを5万円分買って、番号を送ってくれる？」…送る？",a:0,o:"部長のLINEは、乗っ取られていました",e:"「電子マネーで払って」は詐欺の典型。知り合いのアカウントが乗っ取られて送られてくることも。電話など別の方法で確認を。"},
+{g:"gen",c:"scam",w:"ブラウザの警告",q:"「ウイルスに感染しました！今すぐ下記の番号にお電話ください」…電話する？",a:0,o:"遠隔操作ソフトを入れさせられ、高額なサポート料を請求されました",e:"偽の警告で電話させる「サポート詐欺」です。表示された番号には電話せず、ブラウザを閉じましょう。閉じられなければ再起動を。"},
+{g:"gen",c:"scam",w:"謎のWebサイト",q:"「ロボットでないことの確認：Windowsキー＋Rを押して、貼り付けてEnter」…従う？",a:0,o:"貼り付けたのは、ウイルスを入れる命令でした",e:"本物の確認画面が、キー操作で命令を実行させることはありません。偽の確認画面でウイルスを入れさせる、最近増えている手口です。"},
+{g:"gen",c:"scam",w:"カード会社（？）",q:"「カードが利用停止になります。メールのリンクから今すぐ本人確認を」…ログインする？",a:0,o:"ID・パスワード・暗証番号まで、全部差し上げました",e:"「今すぐ」「停止」と急かすのは詐欺の常套手段。カード会社の公式アプリや、自分で開いた公式サイトで確認しましょう。"},
+{g:"gen",c:"scam",w:"自分",q:"検索結果のいちばん上に出た「公式サポート」。これなら必ず本物だよね？",a:0,o:"広告枠に紛れ込んだ偽サイトでした",e:"検索結果の上位や広告に、偽サイトが紛れることがあります。URLを確認するか、公式サイトからたどりましょう。"},
+{g:"gen",c:"scam",w:"自分",q:"詐欺メールに「詐欺だろ！」と返信して、説教してやる。アリ？",a:0,o:"「反応する人」と認定され、詐欺メールが倍増しました",e:"返信すると「このアドレスは使われている」と教えることに。無視して削除が最強です。"},
+{g:"gen",c:"scam",w:"自分",q:"身に覚えのない迷惑メールの「配信停止はこちら」。押せば止まるよね？",a:0,o:"「反応あり」リストに昇格しました",e:"怪しいメールの停止リンクは、アドレスの存在確認や偽サイトへの誘導に使われることも。押さずに迷惑メール設定で対処を。"},
+{g:"gen",c:"scam",w:"SNSのDM",q:"「おめでとう！10万円当選です。リンクからログインして受け取ってね」…ログインする？",a:0,o:"乗っ取られたあなたのアカウントが、友達に同じDMを送り始めました",e:"応募していない当選連絡は詐欺の定番。乗っ取られると、あなたの名前で友達にも被害が広がります。"},
+{g:"gen",c:"scam",w:"同僚",q:"駐車場でUSBメモリを拾いました！中身を見て、持ち主を探しましょうか？",a:0,o:"挿した瞬間、社内ネットワークにウイルスが広がりました",e:"わざと落としたUSBメモリでウイルスに感染させる手口があります。拾ったものは自分のPCに挿さず、落とし物として届けましょう。"},
+{g:"gen",c:"scam",w:"自分",q:"「至急」「重要」と書かれたメールほど、急いで対応すべき？",a:0,o:"急いだ結果、詐欺師の思うツボでした",e:"急がせるのは、考える時間を奪うための手口。「至急」ほど一呼吸おいて確認を。このゲームも急かしてきますが。"},
+{g:"gen",c:"scam",w:"取引先（？）",q:"「請求書です。添付の『請求書.pdf.exe』をご確認ください」…開く？",a:0,o:"PDFのふりをした、ウイルス入りのプログラムでした",e:"最後の「.exe」はプログラムの印。PDFに見せかけたウイルスの手口です。ファイル名の末尾（拡張子）を表示する設定にしておくと見抜きやすくなります。"},
+{g:"gen",c:"scam",w:"添付ファイル",q:"「この文書を表示するには『コンテンツの有効化』を押してください」…押す？",a:0,o:"文書に仕込まれた仕掛けから、社内にウイルスが広がりました",e:"「有効化して」と誘うファイルは、マクロ（自動で動く仕組み）でウイルスを動かす手口の可能性大。送り主に別の方法で確認を。"},
+{g:"gen",c:"scam",w:"フリーWi-Fi",q:"「接続するには、普段お使いのメールアドレスとパスワードを入力してください」…入力する？",a:0,o:"偽のWi-Fiに、メールのパスワードを差し出しました",e:"お店そっくりの名前の偽Wi-Fiもあります。普段使いのパスワードを求められたら、まず疑いましょう。"},
+{g:"gen",c:"scam",w:"新人",q:"「情報システム部です。PC点検のためパスワードを教えて」と電話が。教えていいですか？",a:0,o:"情シスに、そんな人はいませんでした",e:"社内の人を名乗ってパスワードを聞き出す手口です。本物の情シスは、ふつうパスワードを聞きません。"},
+{g:"gen",c:"scam",w:"新人",q:"お客様から電話で「登録メールアドレスを変えて」と。本人確認なしで変えていいですか？",a:0,o:"電話の主は、お客様になりすました攻撃者でした",e:"なりすましでアカウントを乗っ取る手口です。決められた本人確認の手順を必ず守りましょう。"},
+{g:"gen",c:"scam",w:"先輩",q:"怪しいメール、念のため情シスに報告しておく？",a:1,o:"同じメールで、隣の部署が全滅しました",e:"1人の報告で、同じメールを受け取った全員を守れます。「気のせいかも」でも報告してOK。"},
+
+{g:"gen",c:"leak",w:"新人",q:"取引先30社への一斉メール、宛先（TO）に全員並べて送っていいですか？",a:0,o:"30社に、30社分のメールアドレスが配られました",e:"全員のアドレスが互いに見えてしまい、立派な情報漏洩です。一斉送信はBCCか、一斉配信の仕組みを使いましょう。"},
+{g:"gen",c:"leak",w:"営業部長",q:"パスワード付きZIPを送って、パスワードは別メールで送る。これで安全だよね？",a:0,o:"1通目をのぞける人は、2通目も普通にのぞけました",e:"同じメールの通り道で送るので、のぞける人には両方見えます（通称PPAP）。内閣府などの国の機関でも廃止され、今は共有リンクと閲覧権限の設定などが主流です。"},
+{g:"gen",c:"leak",w:"後輩",q:"誤送信しちゃいました…恥ずかしいので、黙っててもいいですか？",a:0,o:"3日後、相手の会社から先に連絡が来ました",e:"報告は早いほど被害を小さくできます。ミスそのものより「隠す」ほうがずっと大問題に。"},
+{g:"gen",c:"leak",w:"新人",q:"怪しい添付ファイルを開いちゃいました…すぐ報告した方がいいですか？",a:1,o:"黙っている間に、社内中に感染が広がりました",e:"まずネットから切り離して、すぐ報告。早い報告が一番の被害対策です。"},
+{g:"gen",c:"leak",w:"自分",q:"ちょっと席を外すだけでも、PCの画面ロックをかけるべき？",a:1,o:"戻ったら、画面の顧客リストを誰かが撮影していました",e:"数分の離席でも、画面はのぞかれたり操作されたりします。Windowsなら「Windowsキー＋L」で一発。席を立つならロックを習慣に。"},
+{g:"gen",c:"leak",w:"同僚",q:"隣の人がロックせずに離席。代わりにチャットで「今日おごります」って投稿しといていい？",a:0,o:"なぜか、あなたが全員分おごることになりました",e:"冗談でも、他人のアカウントを勝手に操作するのはトラブルの元。そっと画面をロックして、本人に伝えましょう。"},
+{g:"gen",c:"leak",w:"自分",q:"カフェで社外秘の資料を広げて作業。周りは知らない人ばかりだし平気？",a:0,o:"隣の席の人は、ライバル会社の社員でした",e:"画面ののぞき見や会話の盗み聞きは、意外と多い漏洩ルート。外で作業するなら、のぞき見防止フィルムや席選びを。"},
+{g:"gen",c:"leak",w:"先輩",q:"飲み会が盛り上がってきたし、開発中の新製品の話をしてもいい？",a:0,o:"隣のテーブルの人が、熱心にメモを取っていました",e:"お店や電車での会話は、意外と聞かれています。社名や製品名が出る話は場所を選びましょう。"},
+{g:"gen",c:"leak",w:"退職予定の同僚",q:"自分で作った資料だし、全部USBにコピーして持って帰っていいよね？",a:0,o:"退職祝いの代わりに、会社から内容証明が届きました",e:"仕事で作った資料は、基本的に会社のもの。無断で持ち出すと、社内ルール違反だけでなく法律問題になることもあります。"},
+{g:"gen",c:"leak",w:"後輩",q:"家で作業したいので、仕事のファイルを個人のLINEに送っていいですか？",a:0,o:"そのスマホごと、電車に置き忘れました",e:"会社が認めていない個人サービスへの持ち出しは、管理できない場所にデータが散らばる原因に。会社のルールに沿った方法で。"},
+{g:"gen",c:"leak",w:"インターン",q:"オフィスの写真、SNSに上げていいですか？ホワイトボードも写ってますけど",a:0,o:"ホワイトボードの売上目標が、全世界に公開されました",e:"写真の背景には、画面・書類・ホワイトボードなど情報がいっぱい。投稿前に写り込みをチェックしましょう。"},
+{g:"gen",c:"leak",w:"自分",q:"スクショをSNSに上げる前に、通知や他のタブが写り込んでいないか確認するべき？",a:1,o:"通知欄に、上司へのグチが写っていました",e:"スクショには、通知・ブックマーク・アドレスバーなど思わぬ情報が写ります。投稿前にトリミングを。"},
+{g:"gen",c:"leak",w:"友人",q:"家の窓から撮った景色と一緒に「今日から1週間旅行！」って投稿していい？",a:0,o:"留守の間に、空き巣が「お邪魔」しました",e:"景色や写り込みから住所が割り出されることも。「今いない」情報と組み合わさると空き巣のヒントに。旅行の投稿は帰ってからが安心です。"},
+{g:"gen",c:"leak",w:"父",q:"古いパソコン、ゴミ箱を空にしたから、そのまま売っていいよな？",a:0,o:"買った人に、家族写真と確定申告のデータを復元されました",e:"ゴミ箱を空にしても、復元ソフトで戻せることがあります。売る・捨てる前は、初期化やデータ消去ソフトで消去を。"},
+{g:"gen",c:"leak",w:"自分",q:"スマホを売る前に、バックアップを取り、アカウントからサインアウトして初期化する？",a:1,o:"次の持ち主に、あなたの写真フォルダが引き継がれました",e:"初期化だけでなく、アカウントの連携解除も忘れずに。しないと、次の人が使えないトラブルにもなります。"},
+{g:"gen",c:"leak",w:"自分",q:"スマホの「探す」機能やリモートロック、オンにしておくべき？",a:1,o:"落としたスマホの行方は、誰にも分からなくなりました",e:"紛失したときに、位置の確認・ロック・データ消去ができます。設定できるのは「落とす前」だけです。"},
+{g:"gen",c:"leak",w:"懐中電灯アプリ",q:"「ライトを点けるには、連絡先と位置情報へのアクセスを許可してください」…許可する？",a:0,o:"友達全員の連絡先が、どこかのサーバーへ旅立ちました",e:"機能に関係ない権限を求めるアプリは要注意。「なぜそれが必要？」と一度考えましょう。"},
+{g:"gen",c:"leak",w:"友人",q:"SNSのプロフィールに、生年月日・出身校・ペットの名前、全部書いていい？",a:0,o:"「秘密の質問」の答えが、全部プロフィールに書いてありました",e:"これらはパスワードや「秘密の質問」の推測材料になります。公開する情報は必要最小限に。"},
+{g:"gen",c:"leak",w:"自分",q:"顧客名簿のファイルを共有する前に、共有リンクの公開範囲（誰が見られるか）を確認する？",a:1,o:"「リンクを知っている全員」が、思ったより全員でした",e:"「リンクを知っていれば誰でも閲覧可」のままだと、転送や誤送信で一気に広がります。共有する相手を絞りましょう。"},
+{g:"gen",c:"leak",w:"総務",q:"個人情報が載った書類、シュレッダーにかけてから捨てる？",a:1,o:"ゴミ置き場から、顧客名簿が拾われました",e:"紙も立派な漏洩ルート。ゴミをあさって情報を集める手口もあります。"},
+{g:"gen",c:"leak",w:"自分",q:"メールの送信ボタンを押す前に、宛先と添付ファイルをもう一度確認する？",a:1,o:"A社用の見積書を、B社に送ってしまいました",e:"誤送信は、情報漏洩の原因の上位常連。送信前の3秒確認が、いちばん安い対策です。"},
+
+{g:"gen",c:"lit",w:"友人",q:"地震の直後に「動物園からライオンが逃げた」という投稿が！拡散して注意を呼びかけるべき？",a:0,o:"デマの拡散に、全力で協力してしまいました",e:"災害時はデマが広がりやすく、熊本地震では「ライオンが逃げた」という偽の投稿をした人が逮捕されています。公的機関や報道で確認できるまで拡散しないこと。"},
+{g:"gen",c:"lit",w:"母",q:"「○○を飲むと病気が治る」って記事、家族LINEに回しておくね。いい？",a:0,o:"親戚中に、根拠のない健康法が広まりました",e:"健康情報はデマが特に多い分野。発信元や根拠を確かめ、迷ったら医師や薬剤師に聞くのが安心です。"},
+{g:"gen",c:"lit",w:"自分",q:"「○○大学の研究で判明！」と書いてあれば、信じていいよね？",a:0,o:"その研究、ネズミ10匹の実験でした",e:"研究の一部が切り取られたり、大げさに紹介されたりはよくあること。元の発表を確認できるかがポイントです。"},
+{g:"gen",c:"lit",w:"友人",q:"怒りがこみ上げる投稿を見た！拡散する前に、いったん一呼吸おくべき？",a:1,o:"勢いで拡散したら、まさかの誤情報でした",e:"感情をあおる投稿ほど拡散されやすく、デマも混ざりがち。シェアする前に「本当かな？」と一度考えて。"},
+{g:"gen",c:"lit",w:"友人",q:"スクショだけ出回っている有名人の暴言。元の投稿は見てないけど、本物だよね？",a:0,o:"画像編集で作られた偽スクショでした",e:"スクショは簡単に作れます。元の投稿や、本人・公式の発表を確認しましょう。"},
+{g:"gen",c:"lit",w:"友人",q:"同じ内容がいろんなアカウントから流れてくる。みんな言ってるから本当だよね？",a:0,o:"「みんな」の正体は、同じ人が操る大量のアカウントでした",e:"数が多い＝正しい、ではありません。コピペの拡散や、自動で投稿するアカウントのこともあります。"},
+{g:"gen",c:"lit",w:"自分",q:"衝撃的なニュース画像。シェアする前に、出どころ（最初に出した人や媒体）を確認する？",a:1,o:"10年前の、別の場所の写真でした",e:"古い写真や別の場所の写真が「今の出来事」として出回ることはよくあります。画像検索で元をたどれることも。"},
+{g:"gen",c:"lit",w:"自分",q:"鍵マーク（https）が付いているサイトなら、本物のサイトだよね？",a:0,o:"鍵付きの、立派な偽サイトでした",e:"鍵マークは「通信が暗号化されている」という意味で、「運営者が本物」という保証ではありません。偽サイトの多くも鍵付きです。"},
+{g:"gen",c:"lit",w:"先輩",q:"シークレットモードなら、会社のネットで何を見ても会社にはバレないよね？",a:0,o:"情シスの記録には、すべて残っていました",e:"シークレットモードは「自分のブラウザに履歴を残さない」だけ。会社のネットワークからは見えています。"},
+{g:"gen",c:"lit",w:"友人",q:"Macって、ウイルスに感染しないんでしょ？",a:0,o:"Macにも、しっかり感染しました",e:"Macやスマホを狙うウイルスもあります。どの機器でも、アップデートと「怪しいものを開かない」が基本です。"},
+{g:"gen",c:"lit",w:"自分",q:"OSやアプリのアップデート、通知が来たら早めに当てるべき？",a:1,o:"「あとで」を押し続けた結果、古い穴から侵入されました",e:"アップデートには、見つかった弱点（脆弱性）の修正が含まれます。後回しにするほど、危険な期間が延びます。"},
+{g:"gen",c:"lit",w:"父",q:"セキュリティソフトを入れてるから、怪しいサイトも開き放題だよな？",a:0,o:"ソフトが見抜けない新しい手口に、見事に引っかかりました",e:"セキュリティソフトも万能ではありません。人をだます詐欺サイトなどは防ぎきれないこともあります。"},
+{g:"gen",c:"lit",w:"自分",q:"会社のPCに、便利そうなフリーソフトを自分の判断で入れていい？",a:0,o:"便利ツールに、おまけでウイルスが付いてきました",e:"会社のPCに入れるソフトは、会社のルールで確認してから。偽物や、余計なおまけ付きのソフトもあります。"},
+{g:"gen",c:"lit",w:"自称セキュリティ通",q:"ハッカーは黒いパーカーを着てるから、パーカーの人を警戒すれば安全？",a:0,o:"攻撃してきたのは、パーカーを着ていないプログラムでした",e:"攻撃の多くは、自動で動くプログラムや詐欺メール。見た目ではなく「やり方」で見分けましょう。"},
+{g:"gen",c:"lit",w:"自分",q:"気になるニュースは、ひとつのまとめサイトだけでなく、複数の情報源で確かめる？",a:1,o:"1つのまとめサイトを信じた結果、全部デマでした",e:"情報源が1つだけだと、間違いや偏りに気づけません。報道機関や公式発表など、複数で確認を。"},
+{g:"gen",c:"lit",w:"自分",q:"ソフトやアプリは、公式サイトや公式ストアから入れる？",a:1,o:"非公式サイトの「無料版」に、ウイルスが同梱されていました",e:"非公式の配布サイトには、ウイルス入りの偽物も。なお、検索広告に出る偽の公式サイトにも注意を。"},
+{g:"gen",c:"lit",w:"友人",q:"「このメッセージを10人に回さないと不幸になります」…回しておく？",a:0,o:"10人の友達が、あなたのことを少し苦手になりました",e:"チェーンメールは、デマや迷惑を広げるだけ。不安をあおる内容でも、回さずに削除しましょう。"},
+
+{g:"gen",c:"ai",w:"後輩",q:"AIチャットに顧客リストを貼って分析させていいですか？会社のルールは…見てないですけど",a:0,o:"顧客リストが、会社の知らないところへ旅立ちました",e:"入力内容が保存されたり、学習に使われたりする設定のサービスもあります。業務データを入れる前に、会社のルールと設定を確認しましょう。"},
+{g:"gen",c:"ai",w:"自分",q:"AIが答えた法律の条文や論文、確認せずにそのまま資料に載せていい？",a:0,o:"存在しない判例を、堂々と引用していました",e:"AIは、もっともらしい「でっち上げ」をすることがあります。大事な情報は必ず元の出典で確認を。"},
+{g:"gen",c:"ai",w:"自分",q:"AIが作った画像は、本物の写真と見分けがつかないことがある？",a:1,o:"AIが作った偽画像を、本物だと信じ込みました",e:"最近の生成画像は、人の目ではほぼ見分けられないことも。「誰が最初に出した画像か」を確認する習慣が大事です。"},
+{g:"gen",c:"ai",w:"自分",q:"会社で許可されたAIでも、お客様の名前などは伏せてから入力する？",a:1,o:"必要のない個人情報まで、AIの会話履歴に残りました",e:"許可されたサービスでも、必要のない個人情報は入れないのが安心。伏せ字にしても、たいていの作業はできます。"},
+{g:"dev",c:"ai",w:"後輩エンジニア",q:"AIが提案したパッケージ名、存在を確かめずにそのままインストールしていいですか？",a:0,o:"AIがでっち上げた名前で、攻撃者が罠を用意していました",e:"AIは実在しないパッケージ名を作ることがあり、その名前で悪意あるパッケージを公開する手口も。公式ページで実在と評判を確認しましょう。"},
+{g:"dev",c:"ai",w:"後輩エンジニア",q:"AIが書いたコード、動いたのでレビューなしで本番に出していいですか？",a:0,o:"動いたコードに、パスワードが直書きされていました",e:"「動く」と「安全」は別物。AIのコードも、人が書いたコードと同じようにレビューとテストを。"},
+{g:"dev",c:"ai",w:"AIエージェント",q:"「本番サーバーの管理者権限をください。いい感じに直しておきます」…渡す？",a:0,o:"いい感じに、本番データベースが消えました",e:"AIエージェントが本番のデータベースを消してしまった事例も、実際に報告されています。権限は最小限にして、重要な操作の前には人の確認を。"},
+{g:"dev",c:"ai",w:"自分",q:"AIエージェントが、読み込んだWebページに書かれた指示どおりに動く。これって安全？",a:0,o:"ページに隠された「メールを全部転送して」に、素直に従いました",e:"Webページやメールに指示を仕込んでAIを操る攻撃（プロンプトインジェクション）があります。重要な操作は人が確認しましょう。"},
+
+{g:"dev",c:"dev",w:"後輩エンジニア",q:"公開リポジトリにAPIキーをpushしちゃいました。削除のコミットをすればOKですよね？",a:0,o:"翌朝、クラウドの請求額がケタ違いになっていました",e:"Gitは履歴が残るうえ、公開された鍵は自動で探し回るプログラムに数分で見つかることも。まずキーを無効化して、作り直すのが最優先です。"},
+{g:"dev",c:"dev",w:"先輩エンジニア",q:".env（パスワードなどを書く設定ファイル）は、.gitignoreに入れてGitに載せない？",a:1,o:"秘密の設定ファイルが、全世界に公開されました",e:"秘密の情報はリポジトリに入れないのが基本。最初に「入らない仕組み」を作っておくのが、いちばん楽で安全です。"},
+{g:"dev",c:"dev",w:"後輩エンジニア",q:"本番DBをちょっと修正します。WHERE句は…まあ無くてもいいですよね？",a:0,o:"全ユーザーの名前が「テスト太郎」になりました",e:"WHERE（対象をしぼる条件）がないと、全データが書き換わります。本番を直接さわる時は、バックアップと確認を。"},
+{g:"dev",c:"dev",w:"リーダー",q:"金曜の18時に、大型アップデートをリリースしちゃおうか？",a:0,o:"週末が、まるごと障害対応で消えました",e:"問題が起きても対応できる人が少ない時間帯のリリースは危険。どうしても出すなら、戻す手順と待機する人を確保して。"},
+{g:"dev",c:"dev",w:"後輩エンジニア",q:"テストが落ちるので、そのテストを消して通してもいいですか？",a:0,o:"テストは通りました。本番は落ちました",e:"テストは「壊れていること」を知らせる警報。警報を止めても、火事は消えません。"},
+{g:"dev",c:"dev",w:"先輩エンジニア",q:"権限エラーが出たから、とりあえず chmod 777（誰でも何でもできる設定）にしとく？",a:0,o:"誰でも書き換えられるサーバーが完成しました",e:"エラーを消すために鍵を全部開けるのは本末転倒。必要な人に、必要な権限だけ渡しましょう。"},
+{g:"dev",c:"dev",w:"後輩エンジニア",q:"証明書のエラーがうるさいので、通信の検証をオフにしていいですか？",a:0,o:"通信の途中で、誰かに中身を書き換えられていました",e:"証明書の検証は「通信相手が本物か」の確認。オフにすると、なりすましに気づけなくなります。"},
+{g:"dev",c:"dev",w:"新人エンジニア",q:"ユーザーのパスワード、データベースにそのまま保存していいですか？",a:0,o:"データが漏れた日、全員のパスワードもそのまま流出しました",e:"パスワードは「元に戻せない形」に変換（ハッシュ化）して保存します。bcryptなど、パスワード専用の方式を使いましょう。"},
+{g:"dev",c:"dev",w:"新人エンジニア",q:"SQL文は、ユーザーが入力した文字をそのままつなげて作ればいいですか？",a:0,o:"検索欄に入力された一文で、データベースが丸ごと抜かれました",e:"入力に命令を混ぜ込まれる「SQLインジェクション」の原因に。値を安全に渡す仕組み（プレースホルダ）を使いましょう。"},
+{g:"dev",c:"dev",w:"後輩エンジニア",q:"APIの秘密鍵、ブラウザ側のJavaScriptに書いておけば動きますよね？",a:0,o:"ページのソースを開いた誰かが、鍵を持っていきました",e:"ブラウザで動くコードは、誰でも中身を見られます。秘密の鍵はサーバー側に置きましょう。"},
+{g:"dev",c:"dev",w:"個人開発の自分",q:"Firebaseのデータベース、「誰でも読み書きOK」のテスト設定のままリリースしていい？",a:0,o:"全ユーザーのデータが、誰でも見られる状態でした",e:"「とりあえず全開放」のまま公開して情報が漏れる事故は定番。公開前に、アクセスのルールを必ず確認しましょう。"},
+{g:"dev",c:"dev",w:"先輩エンジニア",q:"本番のデータを開発環境にコピーして、そのままテストに使っちゃう？",a:0,o:"テストメールが、本物のお客様全員に届きました",e:"本番の個人情報をテストに使うと、漏洩や誤送信の原因に。使うなら、名前などを伏せる処理（マスキング）を。"},
+{g:"dev",c:"dev",w:"インフラ担当",q:"バックアップは、同じサーバーの別フォルダに置いておけば十分ですよね？",a:0,o:"サーバーと一緒に、バックアップも仲良く暗号化されました",e:"サーバーが壊れたり、データを人質に取るウイルス（ランサムウェア）にやられたりすると共倒れに。別の場所にも保管を。"},
+{g:"dev",c:"dev",w:"情シス",q:"バックアップから本当に復元できるか、定期的に試しておくべき？",a:1,o:"いざという時、バックアップが全部壊れていました",e:"「取ってあるけど戻せない」バックアップは意外と多いもの。復元テストまでが、バックアップです。"},
+{g:"dev",c:"dev",w:"先輩エンジニア",q:"リリース前に、元に戻す（ロールバック）手順を用意しておく？",a:1,o:"戻し方が分からず、深夜3時に全員集合しました",e:"リリースは「失敗した時の戻り方」まで準備して完成。戻せる安心があると、判断も早くなります。"},
+{g:"dev",c:"dev",w:"後輩エンジニア",q:"レビュー依頼が多いので、中身を見ずに「問題なし」で承認しちゃっていいですか？",a:0,o:"「問題なし」のハンコを押したコードに、問題がありました",e:"レビューは「もう一人の目」という安全装置。全部は無理でも、ログイン・お金・個人情報に関わる部分は必ず見ましょう。"},
+{g:"dev",c:"dev",w:"情シス",q:"辞めたメンバーのアカウントやAPIキー、すぐに無効化するべき？",a:1,o:"辞めた人のアカウントで、誰かがログインしていました",e:"使われていないアカウントは、乗っ取りの入口になります。退職や異動の時は、すぐに権限の削除を。"},
+{g:"dev",c:"dev",w:"先輩エンジニア",q:"本番サーバーのログイン、みんなで同じadminアカウントを使い回す？",a:0,o:"誰がやったか分からない障害が、迷宮入りしました",e:"共有アカウントだと「誰が何をしたか」が追えません。一人ひとりに、必要な権限だけ渡しましょう。"},
+{g:"dev",c:"dev",w:"後輩エンジニア",q:"管理画面のURLを推測されにくくしたので、ログイン機能はなくていいですか？",a:0,o:"そのURL、ブラウザの履歴からあっさり見つかりました",e:"「隠しているだけ」は、守っていないのと同じ。URLは共有や履歴から簡単に漏れます。必ずログイン（認証）を。"},
+{g:"dev",c:"dev",w:"後輩エンジニア",q:"サーバーが重いので、ネットで見た「rm -rf /」を試してもいいですか？",a:0,o:"サーバーは軽くなりました。中身ごと",e:"これは「全部消す」命令。ネットには悪ふざけの「おすすめ」も紛れています。意味の分からないコマンドは実行しないこと。"},
+{g:"dev",c:"dev",w:"自分",q:"git pushする前に、何が送られるか（差分）を確認する？",a:1,o:"秘密鍵のファイルも、一緒にpushされていました",e:"「何が送られるか」を見るだけで、うっかり混入の多くは防げます。"},
+{g:"dev",c:"dev",w:"先輩エンジニア",q:"本番環境とテスト環境で、パスワードや鍵は別々にしておく？",a:1,o:"テスト環境の鍵が漏れて、本番もいっしょに開きました",e:"同じ鍵だと、守りの弱いテスト環境から本番に入られます。環境ごとに分けましょう。"},
+{g:"dev",c:"dev",w:"個人開発の自分",q:"個人開発のアプリでも、プライバシーポリシーは用意するべき？",a:1,o:"アプリストアの審査で、あっさり差し戻されました",e:"個人開発でも、個人情報を扱うなら法律のルールが適用されます。アプリストアの多くも提出を求めています。"},
+{g:"dev",c:"dev",w:"後輩エンジニア",q:"デバッグしやすいように、ログにユーザーのパスワードも出しておいていいですか？",a:0,o:"ログを見られる全員が、全員のパスワードを知る会社になりました",e:"ログは意外と多くの人やサービスから見られます。パスワードや個人情報は、ログに残さないか伏せましょう。"},
+{g:"dev",c:"dev",w:"後輩エンジニア",q:"脆弱性のお知らせが多すぎるので、全部ミュートしていいですか？",a:0,o:"ミュートした中に、本当に危ないものが混ざっていました",e:"すぐに全部は直せなくても、危険度の高いものから確認を。通知は「未来の事故の予告」です。"},
+{g:"dev",c:"dev",w:"先輩エンジニア",q:"サポートが切れた古いOSのサーバー、動いてるからネットに公開したまま放置でいい？",a:0,o:"10年前の弱点を突かれて、あっさり侵入されました",e:"サポートが切れたOSは、弱点が見つかっても修正されません。更新するか、ネットから切り離しましょう。"},
+{g:"dev",c:"dev",w:"先輩エンジニア",q:"本番データベースを操作できる権限は、必要な人だけに絞っておく？",a:1,o:"新人の練習用コマンドが、本番で実行されました",e:"権限は「必要な人に、必要な分だけ」が基本です。うっかりミスや乗っ取りの被害を小さくできます。"},
+{g:"dev",c:"dev",w:"後輩エンジニア",q:"ユーザーが入力した文字は、画面に表示する前に無害化（エスケープ）しておくべきですか？",a:1,o:"掲示板を開いた全員の画面で、謎のプログラムが動き出しました",e:"そのまま表示すると、悪意あるプログラムを仕込まれる（XSS）原因に。フレームワークの安全な表示機能を使いましょう。"},
+{g:"dev",c:"dev",w:"自分",q:"使っているライブラリは、ときどき更新して最新に近づけておく？",a:1,o:"5年前のライブラリの弱点から、侵入されました",e:"古いライブラリには、すでに知られた弱点が残っていることも。こまめな更新が、結局いちばん楽です。"},
+{g:"dev",c:"dev",w:"後輩エンジニア",q:"ログイン失敗の回数制限、なくてもいいですか？",a:0,o:"一晩中、パスワードを総当たりで試され続けました",e:"回数制限がないと、片っ端から試す「総当たり攻撃」を許してしまいます。"},
+{g:"dev",c:"dev",w:"自分",q:"障害が起きたら、原因と対策を記録して、チームで共有する？",a:1,o:"半年後、まったく同じ障害がまた起きました",e:"記録して共有すれば、同じ失敗を繰り返さずに済みます。目的は犯人探しではなく、仕組みの改善です。"},
+{g:"dev",c:"dev",w:"後輩エンジニア",q:"「とりあえず本番を直接直して、あとでGitに反映します」…いいですよね？",a:0,o:"「あとで」は、永遠に来ませんでした",e:"本番だけ直すと、次のリリースで元に戻ったり、誰も変更を知らない状態に。変更は記録を残して、正規の手順で。"}
+];
+
+const SEAL = { "新人":"新","先輩":"先","情シス":"情","友人":"友","母":"母","自分":"自","謎の電話":"謎","後輩":"後","隣の席の人":"隣","父":"父","弟":"弟","社長（？）":"社","部長（LINE）":"部","ブラウザの警告":"警","謎のWebサイト":"謎","カード会社（？）":"カ","SNSのDM":"DM","同僚":"同","取引先（？）":"取","添付ファイル":"添","フリーWi-Fi":"Wi","営業部長":"営","退職予定の同僚":"退","インターン":"イ","懐中電灯アプリ":"灯","総務":"総","自称セキュリティ通":"通","後輩エンジニア":"後","AIエージェント":"AI","先輩エンジニア":"先","リーダー":"リ","新人エンジニア":"新","個人開発の自分":"個","インフラ担当":"イ" };
+const GENRE_LABEL = { mix: "ミックス", gen: "一般向け", dev: "開発者向け" };
+const NORMAL_COUNT = 15;
+const TIMEOUT_OOPS = [
+  "考えている間に、相手が自己判断で実行しました",
+  "「検討します」のまま、事態が進んでしまいました",
+  "既読スルーした結果、問題が大きくなりました",
+  "保留している間に、被害が広がりました"
+];
+const MILESTONE = { 5: "5連続。情シスが拍手しています", 10: "10連続。もはや人間ファイアウォール", 15: "15連続。伝説の判定係", 20: "20連続。本番を任せたい人材です", 30: "30連続。後光が差しています" };
+const ICON = {
+  circle: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="3.4"/></svg>',
+  cross: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/></svg>'
+};
+
+function hashId(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+Q.forEach(function (q) { q.id = hashId(q.q); });
+const BY_ID = Object.create(null);
+Q.forEach(function (q) { BY_ID[q.id] = q; });
+
+/* ===== 小道具 ===== */
+const $ = function (id) { return document.getElementById(id); };
+const el = {
+  scrTitle: $("scr-title"), scrGame: $("scr-game"), scrResult: $("scr-result"),
+  titleDate: $("title-date"), best: $("best-line"), sound: $("btn-sound"), soundLabel: $("sound-label"), soundWave: $("sound-wave"), soundMute: $("sound-mute"),
+  quit: $("btn-quit"), progLabel: $("hud-prog-label"), prog: $("hud-prog"), score: $("hud-score"), miss: $("hud-miss"),
+  stage: $("stage"), timer: $("timer"), timerFill: $("timer-fill"), slip: $("slip"),
+  qNo: $("q-no"), qCat: $("q-cat"), qWho: $("q-who"), qSeal: $("q-seal"), qText: $("q-text"),
+  stampOk: $("stamp-ok"), stampBig: $("stamp-big"), fusen: $("fusen"), verdict: $("verdict"),
+  count: $("count"), pause: $("pause"), resume: $("btn-resume"), yes: $("btn-yes"), no: $("btn-no"),
+  resDate: $("res-date"), resMode: $("res-mode"), resTitle: $("res-title"), resRank: $("res-rank"), resComment: $("res-comment"),
+  resSheet: $("res-sheet"), resNewBest: $("res-newbest"), retry: $("btn-retry"), home: $("btn-home"), copy: $("btn-copy"),
+  toast: $("toast"), copybox: $("copybox"), copyText: $("copy-text"), tabNg: $("tab-ng"), tabAll: $("tab-all"), review: $("review")
+};
+
+const store = {
+  get: function (k, d) { try { const v = localStorage.getItem("bcj." + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set: function (k, v) { try { localStorage.setItem("bcj." + k, JSON.stringify(v)); } catch (e) { /* 保存できない環境では記録なしで遊べる */ } }
+};
+
+function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function fmt(n) { return Number(n || 0).toLocaleString("ja-JP"); }
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function maxRun(a) { let m = 0, r = 0, p = null; for (const x of a) { r = x === p ? r + 1 : 1; p = x; if (r > m) m = r; } return m; }
+function restart(node, cls) { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); }
+function buzz(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) { /* 対応していない端末は無視 */ } }
+function wareki(d) {
+  try { return new Intl.DateTimeFormat("ja-JP-u-ca-japanese", { era: "long", year: "numeric", month: "long", day: "numeric" }).format(d); }
+  catch (e) { return d.getFullYear() + "年" + (d.getMonth() + 1) + "月" + d.getDate() + "日"; }
+}
+
+/* ===== 効果音（Web Audio で合成） ===== */
+const Sound = (function () {
+  let ctx = null;
+  let on = store.get("sound", true);
+  function ac() {
+    if (!on) return null;
+    try {
+      if (!ctx) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ctx = new C(); }
+      if (ctx.state === "suspended") { const p = ctx.resume(); if (p && p.catch) p.catch(function () {}); }
+      return ctx;
+    } catch (e) { return null; }
+  }
+  function tone(f, dur, type, vol, delay, slide) {
+    const c = ac(); if (!c) return;
+    try {
+      const t = c.currentTime + (delay || 0);
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = type || "sine";
+      o.frequency.setValueAtTime(f, t);
+      if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol || 0.08, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(c.destination);
+      o.start(t); o.stop(t + dur + 0.03);
+    } catch (e) { /* 音が出せなくてもゲームは続ける */ }
+  }
+  function thump() {
+    const c = ac(); if (!c) return;
+    try {
+      const n = Math.floor(c.sampleRate * 0.07);
+      const b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+      const s = c.createBufferSource(); s.buffer = b;
+      const f = c.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 700;
+      const g = c.createGain(); g.gain.value = 0.5;
+      s.connect(f); f.connect(g); g.connect(c.destination); s.start();
+    } catch (e) { /* noop */ }
+    tone(140, 0.12, "sine", 0.22, 0, 55);
+  }
+  return {
+    isOn: function () { return on; },
+    set: function (v) { on = !!v; store.set("sound", on); if (on) ac(); },
+    unlock: function () { ac(); },
+    ok: function (combo) { thump(); const f = 660 * Math.pow(2, Math.min(combo, 10) / 12); tone(f, 0.08, "triangle", 0.09, 0.03); tone(f * 1.5, 0.14, "triangle", 0.08, 0.1); },
+    ng: function () { thump(); tone(196, 0.36, "sawtooth", 0.05, 0.03, 98); tone(185, 0.36, "square", 0.03, 0.03, 92); },
+    timeout: function () { tone(523, 0.16, "triangle", 0.08, 0, 392); tone(330, 0.32, "triangle", 0.07, 0.15, 196); },
+    count: function () { tone(784, 0.07, "square", 0.04); },
+    go: function () { thump(); tone(1175, 0.16, "square", 0.05, 0.02); },
+    end: function (good) { (good ? [523, 659, 784, 1047] : [392, 370, 349, 262]).forEach(function (f, i) { tone(f, 0.18, "triangle", 0.08, i * 0.12); }); }
+  };
+})();
+
+/* ===== 状態 ===== */
+const S = {
+  screen: "title", mode: "normal", genre: "mix", queue: [], i: 0,
+  score: 0, combo: 0, maxCombo: 0, miss: 0, correct: 0, log: [], cur: null,
+  limit: 0, t0: 0, paused: false, pausedElapsed: 0, locked: true, raf: 0, timers: [],
+  lastResult: null, lastStats: null, reviewTab: "ng", shareText: "", shownAt: 0
+};
+function later(fn, ms) { const id = setTimeout(fn, ms); S.timers.push(id); return id; }
+function clearTimers() { S.timers.forEach(clearTimeout); S.timers = []; cancelAnimationFrame(S.raf); }
+
+/* ===== 出題 ===== */
+function poolFor(genre) { return genre === "mix" ? Q.slice() : Q.filter(function (q) { return q.g === genre; }); }
+function ranked(list, seen) {
+  return list.map(function (q) { return { q: q, k: (seen[q.id] || 0) + Math.random() * 0.9 }; })
+    .sort(function (x, y) { return x.k - y.k; }).map(function (x) { return x.q; });
+}
+function buildNormal(genre) {
+  const pool = poolFor(genre), seen = store.get("seen", {});
+  const yes = ranked(pool.filter(function (q) { return q.a === 1; }), seen);
+  const no = ranked(pool.filter(function (q) { return q.a === 0; }), seen);
+  const n = Math.min(NORMAL_COUNT, yes.length + no.length);
+  let ny = Math.min(yes.length, 5 + Math.floor(Math.random() * 3));
+  const nn = Math.min(no.length, n - ny);
+  ny = Math.min(yes.length, n - nn);
+  const pattern = [];
+  for (let i = 0; i < ny; i++) pattern.push(1);
+  for (let i = 0; i < nn; i++) pattern.push(0);
+  for (let t = 0; t < 80; t++) { shuffle(pattern); if (maxRun(pattern) <= 3) break; }
+  let yi = 0, ni = 0;
+  return pattern.map(function (p) { return p ? yes[yi++] : no[ni++]; });
+}
+function buildProd(genre) {
+  const pool = poolFor(genre), seen = store.get("seen", {});
+  const yes = ranked(pool.filter(function (q) { return q.a === 1; }), seen);
+  const no = ranked(pool.filter(function (q) { return q.a === 0; }), seen);
+  const out = []; let run = 0, last = -1;
+  while (yes.length || no.length) {
+    let pickYes = Math.random() < 0.4;
+    if (run >= 3) pickYes = last === 0;
+    if (pickYes && !yes.length) pickYes = false;
+    if (!pickYes && !no.length) pickYes = true;
+    const a = pickYes ? 1 : 0;
+    out.push(pickYes ? yes.shift() : no.shift());
+    if (a === last) run++; else { run = 1; last = a; }
+  }
+  return out;
+}
+function limitFor(q, n) {
+  const len = Array.from(q.q).length;
+  const base = Math.min(7.5, Math.max(3.2, 1.8 + len * 0.095));
+  if (S.mode !== "prod") return base;
+  return Math.max(2.4, base * Math.max(0.5, 1 - 0.025 * n));
+}
+
+/* ===== 画面切り替え ===== */
+function show(name) {
+  S.screen = name;
+  el.scrTitle.classList.toggle("is-active", name === "title");
+  el.scrGame.classList.toggle("is-active", name === "game");
+  el.scrResult.classList.toggle("is-active", name === "result");
+  if (name !== "game") window.scrollTo(0, 0);
+  S.shownAt = performance.now();
+  if (name === "title") renderBest();
+}
+function renderBest() {
+  const n = store.get("best.normal." + S.genre, 0), p = store.get("best.prod." + S.genre, 0);
+  el.best.textContent = (n || p)
+    ? "自己ベスト（" + GENRE_LABEL[S.genre] + "）　通常 " + fmt(n) + "点／本番 " + p + "問連続"
+    : "まだ記録はありません。まずは通常モードからどうぞ。";
+}
+function syncGenre() {
+  document.querySelectorAll("[data-genre]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.genre === S.genre)); });
+  renderBest();
+}
+function syncSound() {
+  const on = Sound.isOn();
+  el.sound.setAttribute("aria-pressed", String(on));
+  el.soundLabel.textContent = on ? "効果音オン" : "効果音オフ";
+  el.soundWave.toggleAttribute("hidden", !on);
+  el.soundMute.toggleAttribute("hidden", on);
+}
+
+/* ===== ゲーム進行 ===== */
+function startGame(mode) {
+  Sound.unlock();
+  clearTimers();
+  S.mode = mode;
+  S.queue = mode === "prod" ? buildProd(S.genre) : buildNormal(S.genre);
+  S.i = 0; S.score = 0; S.combo = 0; S.maxCombo = 0; S.miss = 0; S.correct = 0; S.log = []; S.cur = null;
+  S.locked = true; S.paused = false; S.limit = 0;
+  el.scrGame.classList.toggle("is-prod", mode === "prod");
+  el.pause.hidden = true;
+  el.verdict.innerHTML = "";
+  el.fusen.classList.remove("on");
+  el.timerFill.style.transform = "scaleX(1)";
+  show("game");
+  updateHud();
+  el.scrGame.classList.add("is-wait");
+  countdown(function () { el.scrGame.classList.remove("is-wait"); nextQuestion(); });
+}
+function countdown(done) {
+  const seq = ["3", "2", "1"];
+  let k = 0;
+  el.count.hidden = false;
+  (function step() {
+    if (k < seq.length) { el.count.innerHTML = "<b>" + seq[k] + "</b>"; Sound.count(); k++; later(step, 480); }
+    else { el.count.innerHTML = '<b class="go">開始</b>'; Sound.go(); later(function () { el.count.hidden = true; done(); }, 400); }
+  })();
+}
+function nextQuestion() {
+  if (S.i >= S.queue.length) { finish(S.mode === "prod" ? "cleared" : "done"); return; }
+  const q = S.queue[S.i];
+  S.cur = q;
+  S.limit = limitFor(q, S.i);
+  const seen = store.get("seen", {}); seen[q.id] = (seen[q.id] || 0) + 1; store.set("seen", seen);
+  renderQuestion(q);
+  updateHud();
+  S.locked = false; S.paused = false;
+  S.t0 = performance.now();
+  if (document.hidden) { pause(); return; }
+  S.raf = requestAnimationFrame(tick);
+}
+function renderQuestion(q) {
+  el.qNo.textContent = String(S.i + 1).padStart(3, "0");
+  el.qCat.textContent = CAT[q.c];
+  el.qWho.textContent = q.w;
+  const seal = SEAL[q.w] || Array.from(q.w)[0];
+  el.qSeal.textContent = seal;
+  el.qSeal.classList.toggle("two", Array.from(seal).length > 1);
+  el.qSeal.style.setProperty("--rot", (Math.random() * 18 - 9).toFixed(1) + "deg");
+  el.qText.textContent = q.q;
+  el.stampOk.className = "stamp ok"; el.stampOk.innerHTML = "";
+  el.stampBig.className = "stamp big"; el.stampBig.textContent = "";
+  el.verdict.innerHTML = "";
+  el.yes.classList.remove("hint"); el.no.classList.remove("hint");
+  el.timer.classList.remove("low");
+  el.timerFill.style.transform = "scaleX(1)";
+  el.slip.classList.remove("shake");
+  restart(el.slip, "enter");
+}
+function updateHud() {
+  if (S.mode === "prod") { el.progLabel.textContent = "連続正解"; el.prog.textContent = S.correct + "問"; }
+  else { el.progLabel.textContent = "問題"; el.prog.textContent = Math.min(S.i + 1, S.queue.length) + "/" + S.queue.length; }
+  el.score.textContent = fmt(S.score);
+  el.miss.textContent = S.miss + "枚";
+  if (S.combo >= 2) { el.fusen.textContent = S.combo + "連続"; el.fusen.classList.add("on"); }
+  else el.fusen.classList.remove("on");
+}
+function tick() {
+  if (S.locked || S.paused) return;
+  const frac = Math.max(0, 1 - (performance.now() - S.t0) / 1000 / S.limit);
+  el.timerFill.style.transform = "scaleX(" + frac.toFixed(4) + ")";
+  if (frac < 0.3) el.timer.classList.add("low");
+  if (frac <= 0) { judge(null); return; }
+  S.raf = requestAnimationFrame(tick);
+}
+function judge(ans) {
+  if (S.screen !== "game" || S.locked || S.paused || !S.cur) return;
+  S.locked = true;
+  cancelAnimationFrame(S.raf);
+  const q = S.cur;
+  const t = Math.min(S.limit, (performance.now() - S.t0) / 1000);
+  const timeout = ans === null;
+  const ok = !timeout && ans === q.a;
+  let gained = 0;
+  if (ok) {
+    S.combo++; S.correct++;
+    if (S.combo > S.maxCombo) S.maxCombo = S.combo;
+    const speed = Math.max(0, 1 - t / S.limit);
+    gained = Math.round((100 + 100 * speed) * (1 + Math.min(S.combo - 1, 10) * 0.1));
+    S.score += gained;
+  } else {
+    S.combo = 0; S.miss++;
+  }
+  S.log.push({ q: q, ans: ans, ok: ok, timeout: timeout, t: t });
+  feedback(q, ok, timeout, t, gained);
+  updateHud();
+  const endNow = S.mode === "prod" && !ok;
+  later(function () { S.i++; if (endNow) finish("fail"); else nextQuestion(); }, ok ? 650 : 1900);
+}
+function feedback(q, ok, timeout, t, gained) {
+  if (ok) {
+    el.stampOk.innerHTML = "<b>適切</b>";
+    restart(el.stampOk, "show");
+    Sound.ok(S.combo);
+    const note = MILESTONE[S.combo];
+    el.verdict.innerHTML = '<p class="v-ok">+' + fmt(gained) + "点<small>" + t.toFixed(2) + "秒</small></p>" + (note ? '<p class="v-note">' + esc(note) + "</p>" : "");
+    return;
+  }
+  const prod = S.mode === "prod";
+  el.stampBig.textContent = timeout ? "時間切れ" : (prod ? "本番障害" : "始末書");
+  el.stampBig.classList.add(timeout ? "to" : (prod ? "prod" : "ng"));
+  restart(el.stampBig, "show");
+  restart(el.slip, "shake");
+  if (timeout) Sound.timeout(); else Sound.ng();
+  buzz(timeout ? 60 : [40, 40, 90]);
+  const chip = timeout ? "判断が遅れました" : (prod ? "本番障害が発生しました" : "インシデント発生");
+  const oops = timeout ? TIMEOUT_OOPS[Math.floor(Math.random() * TIMEOUT_OOPS.length)] : q.o;
+  el.verdict.innerHTML = '<p><span class="v-chip' + (timeout ? " to" : "") + '">' + chip + "</span></p>" +
+    '<p class="v-oops">' + esc(oops) + "</p>" +
+    '<p class="v-ans">正解は<b>' + (q.a ? "はい" : "いいえ") + "</b></p>";
+  (q.a ? el.yes : el.no).classList.add("hint");
+}
+function pause() {
+  if (S.screen !== "game" || S.locked || S.paused) return;
+  S.paused = true;
+  S.pausedElapsed = performance.now() - S.t0;
+  cancelAnimationFrame(S.raf);
+  el.pause.hidden = false;
+}
+function resume() {
+  if (!S.paused) return;
+  S.paused = false;
+  el.pause.hidden = true;
+  S.t0 = performance.now() - S.pausedElapsed;
+  S.raf = requestAnimationFrame(tick);
+}
+function quit() {
+  clearTimers();
+  S.locked = true; S.paused = false;
+  el.pause.hidden = true; el.count.hidden = true;
+  el.scrGame.classList.remove("is-wait");
+  show("title");
+}
+
+/* ===== 結果 ===== */
+function finish(reason) {
+  clearTimers();
+  S.locked = true;
+  const res = {
+    mode: S.mode, genre: S.genre, reason: reason, score: S.score, maxCombo: S.maxCombo, miss: S.miss,
+    lastLimit: Math.round(S.limit * 10) / 10, at: Date.now(),
+    log: S.log.map(function (l) { return { id: l.q.id, ans: l.ans, ok: l.ok, timeout: l.timeout, t: Math.round(l.t * 100) / 100 }; })
+  };
+  const key = "best." + res.mode + "." + res.genre;
+  const val = res.mode === "prod" ? res.log.filter(function (l) { return l.ok; }).length : res.score;
+  res.newBest = val > 0 && val > store.get(key, 0);
+  if (res.newBest) store.set(key, val);
+  S.lastResult = res;
+  const r = renderResult(res);
+  show("result");
+  Sound.end(r.good);
+}
+function statsOf(res) {
+  const log = res.log.filter(function (l) { return BY_ID[l.id]; });
+  const answered = log.filter(function (l) { return !l.timeout; });
+  const correct = log.filter(function (l) { return l.ok; }).length;
+  const avg = answered.length ? answered.reduce(function (s, l) { return s + l.t; }, 0) / answered.length : 0;
+  return { log: log, answered: answered, correct: correct, total: log.length, timeouts: log.length - answered.length, avg: avg };
+}
+function rankFor(res, st) {
+  const R = function (grade, title, comment, bonus, good) { return { grade: grade, title: title, comment: comment, bonus: bonus, good: !!good }; };
+  if (res.mode === "prod") {
+    const s = st.correct;
+    if (res.reason === "cleared") return R("神", "もはや|CISO", "全問突破。CISO（情報セキュリティの最高責任者）の椅子が空いています。", "役員待遇", true);
+    if (s >= 30) return R("S", "本番環境に|愛された者", "この速さでこの正確さ。本番はあなたに任せた。", "大幅アップ", true);
+    if (s >= 20) return R("A", "障害ゼロの|伝説", "チームのお守りとして、拝まれています。", "アップ", true);
+    if (s >= 12) return R("B", "本番の番人", "安心して本番を任せられるレベルです。", "アップ", true);
+    if (s >= 6) return R("C", "障害対応の|常連", "深夜の電話にも、慣れてきた頃ですね。", "据え置き");
+    if (s >= 2) return R("D", "金曜|リリーサー", "勢いはある。勢いだけはある。", "減額");
+    return R("E", "初手で本番を|落とした人", "伝説はここから始まる…かもしれません。", "大幅減額");
+  }
+  const ans = st.answered;
+  if (ans.length >= 10 && ans.every(function (l) { return l.ans === 1; })) return R("ヨシ", "全部ヨシ！の人", "中身を見ずに全部OK。現場でいちばん事故を起こすタイプです。", "要面談");
+  if (ans.length >= 10 && ans.every(function (l) { return l.ans === 0; })) return R("却下", "全却下|マシーン", "たしかに何も漏れません。そして仕事も進みません。", "据え置き");
+  if (st.timeouts >= 8) return R("保留", "判断保留の|達人", "何も決めなければ事故も起きない…わけではありません。放置もインシデントです。", "減額");
+  const ratio = st.total ? st.correct / st.total : 0;
+  if (st.correct === st.total && st.avg <= 2.0) return R("S", "人間|ファイアウォール", "速くて正確。あなたがいる限り、この組織は安泰です。", "大幅アップ", true);
+  if (st.correct === st.total) return R("S", "情シスの|守護神", "全問正解。あとはスピードさえ上がれば、伝説になれます。", "大幅アップ", true);
+  if (ratio >= 0.85) return R("A", "頼れる|セキュリティ番長", "ほぼ完璧。うっかりミスにだけ気をつけて。", "アップ", true);
+  if (ratio >= 0.65) return R("B", "ヒヤリハット|常連", "大事故はないけれど、ヒヤッとする場面がちらほら。", "据え置き", true);
+  if (ratio >= 0.45) return R("C", "インシデント|予備軍", "いつ始末書を書いてもおかしくないゾーンです。", "減額");
+  if (ratio >= 0.25) return R("D", "歩く|セキュリティホール", "なぜか、あなたの周りだけ情報がよく漏れます。", "大幅減額");
+  return R("E", "情報漏洩の|申し子", "伝説級です。謝罪会見の練習を始めましょう。", "むしろ請求");
+}
+function renderResult(res) {
+  const st = statsOf(res);
+  const r = rankFor(res, st);
+  S.lastStats = st;
+  el.resDate.textContent = wareki(new Date(res.at));
+  el.resMode.textContent = (res.mode === "prod" ? "本番環境モード" : "通常モード") + "／出題：" + GENRE_LABEL[res.genre];
+  const title = r.title.replace(/\|/g, "");
+  el.resTitle.innerHTML = r.title.split("|").map(esc).join("<wbr>");
+  el.resComment.textContent = r.comment;
+  el.resRank.innerHTML = "<b>" + esc(r.grade) + "</b>";
+  el.resRank.classList.toggle("two", Array.from(r.grade).length > 1);
+  const avg = st.answered.length ? st.avg.toFixed(2) + "秒" : "記録なし";
+  const cells = res.mode === "prod"
+    ? [["連続正解", st.correct + "問"], ["スコア", fmt(res.score) + "点"], ["平均反応", avg], ["最後の制限時間", res.lastLimit.toFixed(1) + "秒"], ["始末書", res.miss + "枚"], ["ボーナス査定", r.bonus]]
+    : [["スコア", fmt(res.score) + "点"], ["正解", st.correct + "/" + st.total], ["平均反応", avg], ["最大連続", res.maxCombo + "問"], ["始末書", res.miss + "枚"], ["ボーナス査定", r.bonus]];
+  el.resSheet.innerHTML = cells.map(function (c) { return "<div><dt>" + esc(c[0]) + "</dt><dd>" + esc(c[1]) + "</dd></div>"; }).join("");
+  el.resNewBest.hidden = !res.newBest;
+  if (res.newBest) restart(el.resNewBest, "show"); else el.resNewBest.classList.remove("show");
+  S.shareText = res.mode === "prod"
+    ? "【秒速コンプラ判定】本番環境モードで" + st.correct + "問連続正解。称号は「" + title + "」でした。"
+    : "【秒速コンプラ判定】称号は「" + title + "」。正解" + st.correct + "/" + st.total + "、平均反応" + avg + "、始末書" + res.miss + "枚でした。";
+  el.toast.textContent = "";
+  el.copybox.hidden = true;
+  S.reviewTab = st.correct < st.total ? "ng" : "all";
+  renderReview();
+  return r;
+}
+function renderReview() {
+  const st = S.lastStats; if (!st) return;
+  const wrong = st.total - st.correct;
+  el.tabNg.textContent = "ミスしたお題（" + wrong + "）";
+  el.tabAll.textContent = "すべて（" + st.total + "）";
+  el.tabNg.setAttribute("aria-pressed", String(S.reviewTab === "ng"));
+  el.tabAll.setAttribute("aria-pressed", String(S.reviewTab === "all"));
+  const list = S.reviewTab === "ng" ? st.log.filter(function (l) { return !l.ok; }) : st.log;
+  if (!list.length) { el.review.innerHTML = '<li class="rv-empty">ミスしたお題はありません。すべて適切に判定できました。</li>'; return; }
+  el.review.innerHTML = list.map(function (l) {
+    const q = BY_ID[l.id];
+    const cls = l.ok ? "ok" : (l.timeout ? "to" : "ng");
+    const mark = l.ok ? ICON.circle : (l.timeout ? "時" : ICON.cross);
+    const label = l.ok ? "正解" : (l.timeout ? "時間切れ" : "不正解");
+    const yours = l.timeout ? "時間切れ" : (l.ans ? "はい" : "いいえ") + "（" + l.t.toFixed(2) + "秒）";
+    return '<li class="rv ' + cls + '">' +
+      '<span class="rv-mark" role="img" aria-label="' + label + '">' + mark + "</span>" +
+      '<p class="rv-meta">' + esc(CAT[q.c]) + "／" + esc(q.w) + "</p>" +
+      '<p class="rv-q">' + esc(q.q) + "</p>" +
+      '<p class="rv-a">あなた：' + yours + "　正解：<b class=\"" + (q.a ? "y" : "n") + "\">" + (q.a ? "はい" : "いいえ") + "</b></p>" +
+      '<p class="rv-e">' + esc(q.e) + "</p></li>";
+  }).join("");
+}
+let toastTimer = 0;
+function toast(msg) { el.toast.textContent = msg; clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.toast.textContent = ""; }, 2600); }
+function copyResult() {
+  const txt = S.shareText;
+  const fallback = function () { el.copyText.value = txt; el.copybox.hidden = false; try { el.copyText.focus(); el.copyText.select(); } catch (e) { /* noop */ } };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(function () { el.copybox.hidden = true; toast("結果をコピーしました"); }, fallback);
+      return;
+    }
+  } catch (e) { /* fall through */ }
+  fallback();
+}
+
+/* ===== 操作 ===== */
+function pressFx(btn) { btn.classList.add("pressed"); setTimeout(function () { btn.classList.remove("pressed"); }, 130); }
+function bindAnswer(btn, val) {
+  btn.addEventListener("pointerdown", function (e) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    btn._pd = true;
+    pressFx(btn);
+    judge(val);
+  });
+  const clear = function () { setTimeout(function () { btn._pd = false; }, 0); };
+  btn.addEventListener("pointerup", clear);
+  btn.addEventListener("pointercancel", clear);
+  btn.addEventListener("click", function () {
+    if (btn._pd) { btn._pd = false; return; }
+    pressFx(btn);
+    judge(val);
+  });
+}
+bindAnswer(el.yes, 1);
+bindAnswer(el.no, 0);
+$("start-normal").addEventListener("click", function () { startGame("normal"); });
+$("start-prod").addEventListener("click", function () { startGame("prod"); });
+document.querySelectorAll("[data-genre]").forEach(function (b) {
+  b.addEventListener("click", function () { S.genre = b.dataset.genre; store.set("genre", S.genre); syncGenre(); });
+});
+el.sound.addEventListener("click", function () { Sound.set(!Sound.isOn()); syncSound(); if (Sound.isOn()) Sound.count(); });
+el.quit.addEventListener("click", quit);
+el.resume.addEventListener("click", resume);
+const guarded = function (fn) { return function () { if (performance.now() - S.shownAt < 600) return; fn(); }; };
+el.retry.addEventListener("click", guarded(function () { if (S.lastResult) S.genre = S.lastResult.genre; startGame(S.lastResult ? S.lastResult.mode : "normal"); }));
+el.home.addEventListener("click", guarded(function () { syncGenre(); show("title"); }));
+el.copy.addEventListener("click", guarded(copyResult));
+el.tabNg.addEventListener("click", function () { S.reviewTab = "ng"; renderReview(); });
+el.tabAll.addEventListener("click", function () { S.reviewTab = "all"; renderReview(); });
+document.addEventListener("visibilitychange", function () { if (document.hidden) pause(); });
+document.addEventListener("keydown", function (e) {
+  if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || S.screen !== "game") return;
+  if (S.paused) { if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); resume(); } return; }
+  if (e.code === "ArrowLeft" || e.code === "KeyF" || e.code === "KeyY") { e.preventDefault(); pressFx(el.yes); judge(1); }
+  else if (e.code === "ArrowRight" || e.code === "KeyJ" || e.code === "KeyN") { e.preventDefault(); pressFx(el.no); judge(0); }
+  else if (e.code === "Escape") quit();
+});
+
+/* ===== 起動（ページ更新後も選んだジャンルと直前の結果を保つ） ===== */
+function boot(data) {
+  data = data || {};
+  S.genre = GENRE_LABEL[data.genre] ? data.genre : store.get("genre", "mix");
+  if (!GENRE_LABEL[S.genre]) S.genre = "mix";
+  el.titleDate.textContent = wareki(new Date());
+  syncGenre(); syncSound();
+  if (data.result && Array.isArray(data.result.log) && data.result.log.length) {
+    S.lastResult = data.result;
+    renderResult(data.result);
+    show("result");
+  } else {
+    show("title");
+  }
+}
+const hot = window.claude && window.claude.hot;
+if (hot && typeof hot.snapshot === "function") hot.snapshot(function () { return { genre: S.genre, result: S.screen === "result" ? S.lastResult : null }; });
+if (hot && typeof hot.ready === "function") hot.ready(boot); else boot((hot && hot.data) || {});
+})();
+</script>
+</body>
+</html>
