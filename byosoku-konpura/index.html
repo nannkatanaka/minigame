@@ -230,6 +230,7 @@ h1 .kakari{font-size:.5em;margin-left:.1em}
 .btn{border:0;border-radius:12px;padding:13px 12px;font-weight:700;font-size:15px;background:var(--mat-deep);color:var(--mat-ink);box-shadow:inset 0 0 0 1.5px var(--mat-sub)}
 .btn.primary{grid-column:1 / -1;background:var(--slip);color:var(--ink);font-family:var(--display);font-weight:900;font-synthesis:none;font-size:20px;box-shadow:0 5px 0 var(--slip-edge),0 10px 18px rgba(0,0,0,.22)}
 .btn.primary:active{transform:translateY(4px);box-shadow:0 1px 0 var(--slip-edge)}
+.btn.share-x{grid-column:1 / -1;display:flex;align-items:center;justify-content:center;text-decoration:none;background:var(--sumi);color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.28)}
 .toast{min-height:1.4em;font-size:13px;color:var(--marker);text-align:center}
 .copybox{display:grid;gap:6px;font-size:13px;color:var(--mat-sub)}
 .copybox textarea{width:100%;border:0;border-radius:8px;padding:10px;font:inherit;font-size:14px;background:var(--slip);color:var(--ink);resize:none}
@@ -409,6 +410,7 @@ h1 .kakari{font-size:.5em;margin-left:.1em}
   </article>
   <div class="actions">
     <button type="button" class="btn primary" id="btn-retry">もう一回</button>
+    <a class="btn share-x" id="btn-x" href="https://x.com/intent/tweet" target="_blank" rel="noopener noreferrer">Xに共有する</a>
     <button type="button" class="btn" id="btn-home">タイトルへ</button>
     <button type="button" class="btn" id="btn-copy">結果をコピー</button>
   </div>
@@ -565,6 +567,12 @@ const Q = [
 const SEAL = { "新人":"新","先輩":"先","情シス":"情","友人":"友","母":"母","自分":"自","謎の電話":"謎","後輩":"後","隣の席の人":"隣","父":"父","弟":"弟","社長（？）":"社","部長（LINE）":"部","ブラウザの警告":"警","謎のWebサイト":"謎","カード会社（？）":"カ","SNSのDM":"DM","同僚":"同","取引先（？）":"取","添付ファイル":"添","フリーWi-Fi":"Wi","営業部長":"営","退職予定の同僚":"退","インターン":"イ","懐中電灯アプリ":"灯","総務":"総","自称セキュリティ通":"通","後輩エンジニア":"後","AIエージェント":"AI","先輩エンジニア":"先","リーダー":"リ","新人エンジニア":"新","個人開発の自分":"個","インフラ担当":"イ" };
 const GENRE_LABEL = { mix: "ミックス", gen: "一般向け", dev: "開発者向け" };
 const NORMAL_COUNT = 15;
+const SHARE_URL = "https://nannkatanaka.github.io/minigame/byosoku-konpura/";
+const SHARE_TAG = "秒速コンプラ判定";
+function publicUrl() {
+  try { if (/\.github\.io$/.test(location.hostname)) return location.origin + location.pathname.replace(/index\.html$/, ""); } catch (e) { /* noop */ }
+  return SHARE_URL;
+}
 const TIMEOUT_OOPS = [
   "考えている間に、相手が自己判断で実行しました",
   "「検討します」のまま、事態が進んでしまいました",
@@ -593,7 +601,7 @@ const el = {
   stampOk: $("stamp-ok"), stampBig: $("stamp-big"), fusen: $("fusen"), verdict: $("verdict"),
   count: $("count"), pause: $("pause"), resume: $("btn-resume"), yes: $("btn-yes"), no: $("btn-no"),
   resDate: $("res-date"), resMode: $("res-mode"), resTitle: $("res-title"), resRank: $("res-rank"), resComment: $("res-comment"),
-  resSheet: $("res-sheet"), resNewBest: $("res-newbest"), retry: $("btn-retry"), home: $("btn-home"), copy: $("btn-copy"),
+  resSheet: $("res-sheet"), resNewBest: $("res-newbest"), retry: $("btn-retry"), home: $("btn-home"), copy: $("btn-copy"), shareX: $("btn-x"),
   toast: $("toast"), copybox: $("copybox"), copyText: $("copy-text"), tabNg: $("tab-ng"), tabAll: $("tab-all"), review: $("review")
 };
 
@@ -962,6 +970,8 @@ function renderResult(res) {
   S.shareText = res.mode === "prod"
     ? "【秒速コンプラ判定】本番環境モードで" + st.correct + "問連続正解。称号は「" + title + "」でした。"
     : "【秒速コンプラ判定】称号は「" + title + "」。正解" + st.correct + "/" + st.total + "、平均反応" + avg + "、始末書" + res.miss + "枚でした。";
+  S.copyText = S.shareText + " #" + SHARE_TAG + " " + publicUrl();
+  el.shareX.href = "https://x.com/intent/tweet?text=" + encodeURIComponent(S.shareText) + "&url=" + encodeURIComponent(publicUrl()) + "&hashtags=" + encodeURIComponent(SHARE_TAG);
   el.toast.textContent = "";
   el.copybox.hidden = true;
   S.reviewTab = st.correct < st.total ? "ng" : "all";
@@ -994,7 +1004,7 @@ function renderReview() {
 let toastTimer = 0;
 function toast(msg) { el.toast.textContent = msg; clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.toast.textContent = ""; }, 2600); }
 function copyResult() {
-  const txt = S.shareText;
+  const txt = S.copyText || S.shareText;
   const fallback = function () { el.copyText.value = txt; el.copybox.hidden = false; try { el.copyText.focus(); el.copyText.select(); } catch (e) { /* noop */ } };
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1037,6 +1047,7 @@ const guarded = function (fn) { return function () { if (performance.now() - S.s
 el.retry.addEventListener("click", guarded(function () { if (S.lastResult) S.genre = S.lastResult.genre; startGame(S.lastResult ? S.lastResult.mode : "normal"); }));
 el.home.addEventListener("click", guarded(function () { syncGenre(); show("title"); }));
 el.copy.addEventListener("click", guarded(copyResult));
+el.shareX.addEventListener("click", function (e) { if (performance.now() - S.shownAt < 600) e.preventDefault(); });
 el.tabNg.addEventListener("click", function () { S.reviewTab = "ng"; renderReview(); });
 el.tabAll.addEventListener("click", function () { S.reviewTab = "all"; renderReview(); });
 document.addEventListener("visibilitychange", function () { if (document.hidden) pause(); });
